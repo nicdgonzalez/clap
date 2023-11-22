@@ -93,9 +93,9 @@ class Option(Argument[T]):
     def __init__(self, name: str, **kwargs: Any) -> None:
         name = name.replace("_", "-")
         super().__init__(name, **kwargs)
-        self.short: str = kwargs.pop("short", MISSING)
-        self.requires: set[str] = kwargs.pop("requires", set())
-        self.conflicts: set[str] = kwargs.pop("conflicts", set())
+        self.short: str = kwargs.get("short", MISSING)
+        self.requires: set[str] = kwargs.get("requires", set())
+        self.conflicts: set[str] = kwargs.get("conflicts", set())
 
     def help_item_format(self) -> HelpItem:
         name = ""
