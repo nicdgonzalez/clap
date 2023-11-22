@@ -4,51 +4,6 @@ Parser
 
 This module contains the parser for the command-line arguments.
 
-Examples
---------
->>> from typing import Any, Annotated
->>>
->>> import clap
->>> from clap.metadata import Short, Conflicts
->>>
->>>
->>> class ExampleCLI(clap.Parser):
-...     \"\"\"Represents a collection of commands for the Example CLI.\"\"\"
-...
-...     def __init__(self, *args: Any, **kwargs: Any) -> None:
-...         super().__init__(
-...             help="A command-line tool for managing servers.",
-...             epilog="Thank you for using Example CLI!",
-...             *args,
-...             **kwargs,
-...         )
-...         # do normal object initialization stuff here:
-...         self.foo = "bar"
-...         self.baz = 69
-...
-...     @clap.command()
-...     def start(
-...         self,
-...         ip: str,
-...         port: int = 8080,
-...         /,
-...         *,
-...         verbose: Annotated[bool, Short("v"), Conflicts("quiet")] = False,
-...         quiet: Annotated[bool, Short("q"), Conflicts("verbose")] = False,
-...     ) -> None:
-...         \"\"\"Starts the specified server.
-...
-...         Parameters
-...         ----------
-...         ip : str
-...             The IP address of the server to start.
-...         port : int, default=25565
-...             The port of the server to start.
-...         verbose : bool, default=False
-...             Whether to print verbose output.
-...         \"\"\"
-...         ...
-
 """
 from __future__ import annotations
 
@@ -104,6 +59,9 @@ class Parser:
         self.commands: dict[str, Command[Any] | Group] = {}
         for command in self.__class__.__dict__.values():
             if isinstance(command, (Command, Group)):
+                if command.parent is not None:
+                    # Command belongs to a group.
+                    continue
                 command.parent = self
                 self.commands[command.name] = command
 
@@ -212,7 +170,7 @@ class Parser:
         for option in self.options.values():
             builder.add_item(option)
 
-        builder.add_header("COMMANDS")
+        builder.add_header("COMMANDS", "'*' indicates COMMAND GROUP")
         for command in self.commands.values():
             builder.add_item(command)
         builder.placeholder = "No commands available."
@@ -287,11 +245,18 @@ class Parser:
 
             ctx["options"][name] = option.default
 
+        command = ctx.pop("command")
         if ctx["options"].pop("help", False) is True:
-            ctx["command"].print_help(help_fmt=help_fmt)
+            command.print_help(help_fmt=help_fmt)
             return
 
-        ctx["command"](*ctx["arguments"], **ctx["options"])
+        if isinstance(command.parent, Group):
+            # The command belongs to a group, so we need to reach the parser
+            # that the group belongs to in order to execute the command.
+            # Otherwise the `self` argument will be incorrect for the command.
+            while not isinstance(command.parent, Parser):
+                command.parent = command.parent.parent
+        command(*ctx["arguments"], **ctx["options"])
 
     def _process_deferred(
         self,
@@ -436,7 +401,7 @@ class Parser:
             except KeyError:
                 raise ValueError(f"Unknown command: {token.value}.")
 
-            ctx["command"] = self.commands[token.value]
+            ctx["command"] = command.commands[token.value]
             return
 
         index = len(ctx["arguments"])
