@@ -1,44 +1,9 @@
 """
-Core
-====
+Commands
+========
 
-This module contains the core classes and functions of the package.
-
-Examples
---------
->>> import clap
->>>
->>>
->>> class ExampleCLI(clap.Parser):
-...     \"\"\"Represents a collection of commands for the Example CLI.\"\"\"
-...
-...     def __init__(self, *args, **kwargs):
-...         super().__init__(
-...             help="A command-line tool for managing servers.",
-...             epilog="Thank you for using Example CLI!",
-...             *args,
-...             **kwargs,
-...         )
-...         # do normal object initialization stuff here
-...         ...
-...
-...     @clap.group()
-...     def add(self, *args: Any, **kwargs: Any) -> None:
-...         \"\"\"A group of commands for adding things.\"\"\"
-...         pass
-...
-...     @add.command()
-...     def user(self, id: int, /, *, admin: bool = False) -> None:
-...         \"\"\"Adds a user to the system.
-...
-...         Parameters
-...         ----------
-...         id : int
-...             The ID of the user to add.
-...         admin : bool, default=False
-...             Whether the user should be an administrator.
-...         \"\"\"
-...         ...
+This module contains the classes and functions for defining commands and
+command groups.
 
 """
 from __future__ import annotations
@@ -122,7 +87,8 @@ class Command(Generic[T]):
         else:
             self.callback = callback
 
-        self.name: str = kwargs.pop("name") or callback.__name__
+        name: str = kwargs.pop("name") or callback.__name__
+        self.name = name.replace("_", "-")
 
         parsed_docstring = _parse_docstring(callback)
         self.help = kwargs.pop("help", parsed_docstring["help"])
@@ -145,9 +111,9 @@ class Command(Generic[T]):
             )
 
             if isinstance(argument, Option):
-                self.options[argument.name] = argument
+                self.add_option(argument)
             else:
-                self.arguments.append(argument)
+                self.add_argument(argument)
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         if self.parent is not None:
@@ -449,7 +415,7 @@ class Group:
             The name and description of the command group to use in the help
             message.
         """
-        return HelpItem(self.name, self.help)
+        return HelpItem(f"*{self.name}", self.help)
 
     def add_command(self, command: Command[Any] | Group) -> None:
         """Adds a command to the group.
