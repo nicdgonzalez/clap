@@ -9,6 +9,7 @@ to the appropriate subcommand.
 """
 from __future__ import annotations
 
+import logging
 import dataclasses
 import importlib
 import os
@@ -35,6 +36,8 @@ __all__ = [
     "ArgumentParser",
     "Extension",
 ]
+
+_log = logging.getLogger(__name__)
 
 
 class Extension:
@@ -363,8 +366,14 @@ class ArgumentParser:
 def invoke_command(ctx: _Context, help_fmt: HelpFormatter) -> None:
     try:
         ctx.command.invoke(*ctx.positional, **ctx.keyword)
-    except Exception:
+    except TypeError:  # Argument-related error.
         ctx.command.display_help(fmt=help_fmt)
+    except Exception as exc:
+        _log.exception(
+            f"Failed to invoke command {ctx.command.name!r} with "
+            f"positional arguments {ctx.positional!r} and "
+            f"keyword arguments {ctx.keyword!r}: {exc}"
+        )
 
 
 def handle_deferred_tokens(deferred: List[Token], /, ctx: _Context) -> None:
