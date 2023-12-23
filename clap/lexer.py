@@ -149,7 +149,7 @@ class Token:
             self.token_type == TokenType.ARGUMENT
             and self.value.startswith("-")
             and not self.is_stdin
-            and self[1:].isnumeric()
+            and self.value[1:].isnumeric()
         )
 
     @property
