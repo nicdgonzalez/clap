@@ -9,9 +9,9 @@ to the appropriate subcommand.
 """
 from __future__ import annotations
 
-import logging
 import dataclasses
 import importlib
+import logging
 import os
 import sys
 from typing import TYPE_CHECKING, final
@@ -43,11 +43,12 @@ _log = logging.getLogger(__name__)
 class Extension:
     def __new__(cls) -> Extension:
         self = super().__new__(cls)
-        # This class is meant to be as close to a clean slate as possible.
         # I want to leave __init__ alone so that subclasses don't have to
         # worry about calling super().__init__, but I also need to implement
         # the SupportsCommands protocol, so I'm doing it here instead.
+        self.name = self.__class__.__name__
         self.all_commands = {}
+        accumulate_commands(self)
         return self
 
 
@@ -108,23 +109,26 @@ class ArgumentParser:
         self.brief = brief
         self.description = description
         self.epilog = epilog
-        self.program = program
+        self.name = program
 
-        self.all_commands: Dict[str, Union[Command[Any], Group]] = {}
+        self.all_commands: Dict[str, Union[Command[Any], SupportsCommands]]
+        self.all_commands = {}
         self.all_options: Dict[str, Option[Any]] = {}
 
         add_option(self, DefaultHelp)
         accumulate_commands(self)
 
     @property
-    def commands(self) -> Set[Union[Command[Any], Group]]:
+    def commands(self) -> Set[Union[Command[Any], SupportsCommands]]:
         """A set of all commands that are attached to this parser."""
-        return set(self.all_commands.values())
+        # Exclude aliases while retaining the original order.
+        return [v for k, v in self.all_commands.items() if k == v.name]
 
     @property
     def options(self) -> Set[Option[Any]]:
         """A set of all options that are attached to this parser."""
-        return set(self.all_options.values())
+        # Exclude aliases while retaining the original order.
+        return [v for k, v in self.all_options.items() if k == v.name]
 
     def display_help(self, *, fmt: HelpFormatter) -> None:
         """Display this help message and exit."""
@@ -136,9 +140,9 @@ class ArgumentParser:
             node = h.add_section("DESCRIPTION")
             node.add_item(brief=self.description)
 
-        usage = self.program
+        usage = self.name
 
-        assert self.options, "Parser must have at least the default help."
+        assert self.options, "Parser should have at least the default help."
         options = " | ".join(f"--{option.name}" for option in self.options)
         usage += f" [{options}]"
 
@@ -149,9 +153,7 @@ class ArgumentParser:
 
         node = h.add_section("OPTIONS", skip_if_empty=True)
 
-        # Retain the order of the options for the help message.
-        options = [v for k, v in self.all_options.items() if k == v.name]
-        for option in options:
+        for option in self.options:
             node.add_item(**option.help_info)
 
         node = h.add_section(
@@ -160,9 +162,7 @@ class ArgumentParser:
             skip_if_empty=True,
         )
 
-        # Retain the order of the commands for the help message.
-        commands = [v for k, v in self.all_commands.items() if k == v.name]
-        for command in commands:
+        for command in self.commands:
             node.add_item(**command.help_info)
 
         if self.epilog:
@@ -243,8 +243,8 @@ class ArgumentParser:
 
         invoke_command(ctx, help_fmt)
 
-    def add_extension(self, name: str, package: Optional[str] = None) -> None:
-        """Include commands and groups from an extension file.
+    def extend(self, name: str, package: Optional[str] = None) -> None:
+        """Add commands and groups from an extension file to this parser.
 
         Parameters
         ----------
@@ -256,48 +256,55 @@ class ArgumentParser:
 
         Examples
         --------
-        Directory structure::
+        Assume the following directory structure::
 
-            my_package/
-            ├── ext/
+            ./my_package
+            ├── extensions
             │   ├── __init__.py
-            │   └── commands.py
+            │   └── my_extension.py
             ├── __init__.py
             └── __main__.py
 
-
-        >>> # my_package/ext/commands.py:
+        >>> # my_extension.py
         >>> import clap
         >>>
         >>>
-        >>> class Foo(clap.Extension):
+        >>> class MyExtension(clap.Extension):
         ...
-        ...     def __init__(
-        ...         self,
-        ...         parser: clap.Parser,
-        ...         /,
-        ...         *args: Any,
-        ...         **kwargs: Any
-        ...     ) -> None:
-        ...         self.parser = parser
+        ...     @clap.group()
+        ...     def my_group(self) -> None:
+        ...         \"\"\"A short description of my_group.\"\"\"
+        ...         pass
+        ...
+        ...     @my_group.command()
+        ...     def my_command(self, foo: str, /) -> None:
+        ...         \"\"\"A short description of my_command.
+        ...
+        ...         Parameters
+        ...         ----------
+        ...         foo : :class:`str`
+        ...             A short description of foo.
+        ...         \"\"\"
+        ...         pass
         >>>
-        >>> # Required at the end of every extension file.
-        >>> def setup(parser: clap.Parser, /) -> None:
-        ...     parser.add_command(example)
-        ...     # Skip commands that are already attached to a group.
-        ...     parser.add_command(ungrouped_bar)
+        >>>
+        >>> def setup(parser: clap.ArgumentParser) -> None:
+        ...     parser.add_extension(MyExtension())
 
-        >>> # my_package/__main__.py:
+
+        >>> # __main__.py
+        >>> import sys
+        >>>
         >>> import clap
         >>>
-        >>> parser = clap.Parser(
-        ...     "A command-line tool.",
-        ...     epilog="Thank you for using my_package!",
-        ... )
+        >>> from .docs import url
         >>>
-        >>> parser.add_extension("my_package.ext.commands")
-        >>> # or
-        >>> parser.add_extension(".commands", package="my_package.ext")
+        >>>
+        >>> def main() -> int:
+        ...     parser = clap.ArgumentParser(
+        ...         "A short description of my program.",
+        ...         epilog=f"Documentation can be found at {url}.",
+        ...     )
         """
         module = importlib.import_module(name, package=package)
         setup_func = getattr(module, "setup", None)
@@ -308,6 +315,36 @@ class ArgumentParser:
             )
 
         setup_func(self)
+
+    def add_extension(self, extension: Extension) -> None:
+        """Add all commands from an extension to this parser.
+
+        What makes an extension special is that they allow the user to extend
+        the parser without having to subclass it or trying to jam everything
+        into a single file. This is done by attaching the extension to the
+        parser, but __self__ remains an instance of the extension class.
+
+        Parameters
+        ----------
+        extension : :class:`Extension`
+            The extension to add to this parser.
+
+        Raises
+        ------
+        ValueError
+            If the extension is already attached to a parser.
+        """
+        if not isinstance(extension, Extension):
+            raise TypeError(
+                "expected an Extension instance, not " f"{type(extension)!r}"
+            )
+
+        # add_command takes care of aliases, so filter out the aliases here.
+        commands = [
+            v for k, v in extension.all_commands.items() if k == v.name
+        ]
+        for command in commands:
+            add_command(self, command)
 
     def add_command(
         self, command: Union[Command[Any], SupportsCommands]
@@ -324,17 +361,7 @@ class ArgumentParser:
         ValueError
             If the command is already attached to a parser.
         """
-        if isinstance(command, Extension):
-            # Attach all commands from the extension to this parser.
-            # What makes Extensions special is that they are attached to the
-            # parser, but __self__ remains an instance of the extension class.
-            # This allows the user to extend the parser without having to
-            # subclass it or try to jam everything into a single file.
-            accumulate_commands(command)
-
-            for command in command.all_commands.values():
-                add_command(self, command)
-        elif isinstance(command, (Command, SupportsCommands)):
+        if isinstance(command, (Command, SupportsCommands)):
             add_command(self, command)
         else:
             raise TypeError(
@@ -366,7 +393,7 @@ class ArgumentParser:
 def invoke_command(ctx: _Context, help_fmt: HelpFormatter) -> None:
     try:
         ctx.command.invoke(*ctx.positional, **ctx.keyword)
-    except TypeError:  # Argument-related error.
+    except TypeError:  # argument-related error
         ctx.command.display_help(fmt=help_fmt)
     except Exception as exc:
         _log.exception(
