@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ndg.clap"
+description = "The command-line argument parser that builds itself."
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.8"
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/nicdgonzalez/clap"
+"Issue Tracker" = "https://github.com/nicdgonzalez/clap/issues"
+
+[tool.setuptools.packages]
+find = {}
+
+[tool.setuptools.dynamic]
+version = {attr = "clap.__version__"}
+
+[tool.black]
+line-length = 79
+
+[tool.isort]
+profile = "black"
+line_length = 79

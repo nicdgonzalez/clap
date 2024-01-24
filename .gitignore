@@ -1,0 +1,38 @@
+# Specify rules/patterns for files that Git should not track.
+
+# GENERAL {{{
+*.env
+# }}}
+
+# VIM {{{
+tags
+# }}}
+
+# C {{{
+*.out
+# }}}
+
+# PYTHON {{{
+**/__pycache__/*
+!__init__.py
+!__main__.py
+
+# Distribution/Packaging
+build/*
+dist/*
+*.egg-info/*
+
+# Environments
+venv/*
+
+# Sphinx
+docs/_build/*
+
+# mypy
+.mypy_cache/*
+# }}}
+
+# JAVASCRIPT {{{
+node_modules/*
+package-lock.json
+# }}}
