@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+site_name: clap
+site_url: https://nicdgonzalez.github.io/clap
+theme:
+  name: material
+plugins:
+- mkdocstrings:
+    default_handler: python
+    handlers:
+      python:
+        paths: [src]
+        options:
+          docstring_style: numpy
+          show_source: true

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clap"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "mkdocstrings[python]>=0.18",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 50
