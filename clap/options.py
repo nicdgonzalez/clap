@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from .abc import ParameterizedArgument
@@ -14,7 +16,7 @@ class Option(ParameterizedArgument):
         self._name = name
         self._brief = brief
 
-        if len(alias) > 1:
+        if alias is not None and len(alias) > 1:
             raise ValueError("option alias must be a single character or None")
 
         self._alias = alias

@@ -6,8 +6,9 @@ from .errors import CommandRegistrationError, OptionRegistrationError
 
 if TYPE_CHECKING:
     from builtins import dict as Dict
+    from builtins import list as List
     from builtins import set as Set
-    from typing import Optional
+    from typing import Any, Callable, Optional
 
     from .options import Option
 
@@ -23,6 +24,7 @@ class Argument(Protocol):
         raise NotImplementedError
 
 
+@runtime_checkable
 class CallableArgument(Argument, Protocol):
     """An abstract base class that details common operations for command-line
     arguments that map to an invokable function.
@@ -35,11 +37,7 @@ class CallableArgument(Argument, Protocol):
     """
 
     @property
-    def parent(self) -> Optional[HasCommands]:
-        raise NotImplementedError
-
-    @parent.setter
-    def parent(self, parent: HasCommands) -> None:
+    def callback(self) -> Callable[..., Any]:
         raise NotImplementedError
 
     @property
@@ -47,7 +45,15 @@ class CallableArgument(Argument, Protocol):
         raise NotImplementedError
 
     @property
-    def aliases(self) -> Set[str]:
+    def aliases(self) -> List[str]:
+        raise NotImplementedError
+
+    @property
+    def parent(self) -> Optional[HasCommands]:
+        raise NotImplementedError
+
+    @parent.setter
+    def parent(self, parent: HasCommands) -> None:
         raise NotImplementedError
 
 
@@ -65,7 +71,7 @@ class ParameterizedArgument(Argument, Protocol):
 
 
 @runtime_checkable
-class HasCommands(Protocol, CallableArgument):
+class HasCommands(CallableArgument, Protocol):
 
     @property
     def all_commands(self) -> Dict[str, CallableArgument]:
@@ -122,10 +128,10 @@ class HasCommands(Protocol, CallableArgument):
 
 
 @runtime_checkable
-class HasOptions(Protocol, CallableArgument):
+class HasOptions(CallableArgument, Protocol):
 
     @property
-    def all_options(self) -> Dict[str, ...]:
+    def all_options(self) -> Dict[str, Option]:
         raise NotImplementedError
 
     @property
@@ -155,5 +161,5 @@ class HasOptions(Protocol, CallableArgument):
 
 
 @runtime_checkable
-class HasPositionalArgs(Protocol, CallableArgument):
+class HasPositionalArgs(CallableArgument, Protocol):
     pass
