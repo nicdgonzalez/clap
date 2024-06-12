@@ -5,10 +5,9 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from builtins import dict as Dict
+    from typing import Any
 
-# the first line in a function's docstring
 COMMAND_BRIEF_REGEX = re.compile(r"^(.*?)(?:\n\n|\Z)", re.DOTALL)
-# the second paragraph of a function's docstring
 COMMAND_DESCRIPTION_REGEX = re.compile(
     r"^(?:.*?\n\n)?(.*?)(?:Parameters\n---+.*?)?(?:\n\n|\Z)", re.DOTALL
 )
@@ -22,6 +21,25 @@ OTHER_PARAMETERS_SECTION_REGEX = re.compile(
 PARAMETER_DESCRIPTION_REGEX = re.compile(
     r"(?P<name>\S+)\s*:.*?\n(?P<description>.*?)(?=\S+\s*:|\Z)", re.DOTALL
 )
+
+
+class _Missing:
+    __slots__ = ()
+
+    def __eq__(self, other: Any) -> bool:
+        return False
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __hash__(self) -> int:
+        return 0
+
+    def __repr__(self) -> str:
+        return "..."
+
+
+MISSING: Any = _Missing()
 
 
 def fold_text(text: str, /) -> str:

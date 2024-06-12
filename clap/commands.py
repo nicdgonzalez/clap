@@ -3,8 +3,7 @@ from __future__ import annotations
 import inspect
 from typing import TYPE_CHECKING
 
-from .abc import HasOptions, HasPositionalArgs
-from .abc import HasCommands
+from .abc import HasCommands, HasOptions, HasPositionalArgs
 from .arguments import Positional
 from .utils import parse_docstring
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, overload, runtime_checkable
 
 from .errors import CommandRegistrationError, OptionRegistrationError
 
@@ -8,11 +8,13 @@ if TYPE_CHECKING:
     from builtins import dict as Dict
     from builtins import list as List
     from builtins import set as Set
-    from typing import Any, Callable, Optional
+    from typing import Any, Callable, Optional, Union
 
+    from .arguments import Positional
     from .options import Option
 
 
+@runtime_checkable
 class Argument(Protocol):
 
     @property
@@ -57,6 +59,7 @@ class CallableArgument(Argument, Protocol):
         raise NotImplementedError
 
 
+@runtime_checkable
 class ParameterizedArgument(Argument, Protocol):
     """An abstract base class that details common operations for command-line
     arguments that map to parameters defined by a :class:`CallableArgument`.
@@ -162,4 +165,33 @@ class HasOptions(CallableArgument, Protocol):
 
 @runtime_checkable
 class HasPositionalArgs(CallableArgument, Protocol):
-    pass
+
+    @property
+    def all_positionals(self) -> List[Positional]:
+        raise NotImplementedError
+
+    def add_positional(self, positional: Positional, /) -> None:
+        self.all_positionals.append(positional)
+
+    @overload
+    def remove_positional(self, name: str, /) -> Optional[Positional]: ...
+
+    @overload
+    def remove_positional(self, index: int, /) -> Optional[Positional]: ...
+
+    def remove_positional(
+        self, name_or_index: Union[str, int], /
+    ) -> Optional[Positional]:
+        if isinstance(name_or_index, int):
+            return self.all_positionals.pop(name_or_index)
+        elif isinstance(name_or_index, str):
+            for index, positional in enumerate(self.all_positionals):
+                if positional.name == name_or_index:
+                    return self.all_positionals.pop(index)
+            else:
+                return None
+        else:
+            raise TypeError(
+                "name_or_index expected type str | int, "
+                "got {}".format(type(name_or_index))
+            )
