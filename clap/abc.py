@@ -13,6 +13,15 @@ if TYPE_CHECKING:
     from .arguments import Positional
     from .options import Option
 
+__all__ = (
+    "Argument",
+    "CallableArgument",
+    "ParameterizedArgument",
+    "HasCommands",
+    "HasOptions",
+    "HasPositionalArgs",
+)
+
 
 @runtime_checkable
 class Argument(Protocol):
