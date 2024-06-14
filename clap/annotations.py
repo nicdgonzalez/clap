@@ -1,26 +1,40 @@
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Optional
 
-    from typing_extensions import Self
+
+class Alias:
+
+    def __init__(self, value: str, /) -> None:
+        if len(value) > 1:
+            raise ValueError("value must be a single character")
+
+        self._value = value
+
+    @property
+    def value(self) -> str:
+        return self._value
+
+    @value.setter
+    def value(self, value: str, /) -> None:
+        if len(value) > 1:
+            raise ValueError("value must be a single character")
+
+        self._value = value
 
 
-class Alias(str):
+class Range:
 
-    def __new__(cls, value: str) -> Self:
-        if len(value) != 1:
-            raise ValueError("alias must be a single character")
+    def __init__(self, minimum: int, /, maximum: Optional[int] = None) -> None:
+        if maximum is not None:
+            minimum, maximum = sorted((minimum, maximum))
 
-        return super().__new__(cls, value)
-
-
-class Range(NamedTuple):
-    minimum: int
-    maximum: Optional[int]
+        self._minimum = minimum
+        self._maximum = maximum if maximum is not None else minimum
 
 
 if sys.version_info >= (3, 9):

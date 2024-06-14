@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import inspect
 from typing import TYPE_CHECKING, Protocol, overload, runtime_checkable
 
+from .annotations import Range
 from .errors import CommandRegistrationError, OptionRegistrationError
 
 if TYPE_CHECKING:
     from builtins import dict as Dict
     from builtins import list as List
     from builtins import set as Set
+    from builtins import type as Type
     from typing import Any, Callable, Optional, Union
 
-    from .arguments import Positional
-    from .options import Option
+    from typing_extensions import Self
+
+    from .parameters import Option, Positional
 
 __all__ = (
     "Argument",
@@ -71,7 +75,7 @@ class CallableArgument(Argument, Protocol):
 @runtime_checkable
 class ParameterizedArgument(Argument, Protocol):
     """An abstract base class that details common operations for command-line
-    arguments that map to parameters defined by a :class:`CallableArgument`.
+    arguments that map to function parameters.
 
     The following classes implement this ABC:
 
@@ -79,7 +83,27 @@ class ParameterizedArgument(Argument, Protocol):
     * :class:`Option`
     """
 
-    pass
+    @classmethod
+    def from_parameter(
+        cls, parameter: inspect.Parameter, /, brief: str, t: Type[Any]
+    ) -> Self:
+        raise NotImplementedError
+
+    @property
+    def target_type(self) -> Type[Any]:
+        raise NotImplementedError
+
+    @property
+    def default(self) -> Any:
+        raise NotImplementedError
+
+    @property
+    def n_args(self) -> Range:
+        raise NotImplementedError
+
+    def convert(self, value: str, /) -> Any:
+        # return converter(value, self.target_type)
+        return value
 
 
 @runtime_checkable
@@ -112,7 +136,7 @@ class HasCommands(CallableArgument, Protocol):
             else:
                 _ = self.remove_command(command.name)
 
-                # -1 to exclude current alias when reversing the list
+                # subtract 1 to exclude current alias when reversing the list
                 index = aliases.index(alias) - 1
                 reversed_aliases = aliases[index::-1]
 
@@ -169,7 +193,19 @@ class HasOptions(CallableArgument, Protocol):
 
         self.all_options[option.alias] = option
 
-    def remove_option(self, name: str, /) -> Optional[Option]: ...
+    def remove_option(self, name: str, /) -> Optional[Option]:
+        if (option := self.all_options.pop(name, None)) is None:
+            return None
+
+        if option.alias:
+            if name == option.alias:
+                # user was trying to remove only the alias
+                option.alias.value = ""
+            else:
+                # otherwise, remove the alias as well
+                _ = self.all_options.pop(option.alias, None)
+
+        return option
 
 
 @runtime_checkable
