@@ -144,7 +144,7 @@ class Parser:
     ) -> None:
         value = token.from_argument()
 
-        if isinstance(self.ctx.command, HasCommands):
+        if self.ctx.command is None or isinstance(self.ctx.command, HasCommands):
             try:
                 self.ctx.command = self.ctx.command.all_commands[value]
             except KeyError:
