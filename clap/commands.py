@@ -69,8 +69,7 @@ def is_method_with_self(fn: Callable[..., Any], /) -> bool:
 
     Returns
     -------
-    :class:`bool`: Whether the function is a method with `self` as the first
-    parameter.
+    :class:`bool` Whether the function is a method with `self`.
     """
     parameters = inspect.signature(fn).parameters
 
