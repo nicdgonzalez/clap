@@ -52,6 +52,7 @@ class Parser:
         self.handle_deferred_tokens()
 
         # TODO: fill in options that have default values set
+        # (required to do the next part)
 
         # TODO: ensure that each option accurately handles requires/conflicts
 

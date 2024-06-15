@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = clap.Application()
 app.extend("tests.fuji.fuji.commands")
-app.parse_args("_ server hello Nic --favorite-no 7".split())
+app.parse_args("_ --help".split())
 sys.exit(0)
 
 pprint.pprint(app.all_commands)

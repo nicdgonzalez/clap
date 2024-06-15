@@ -8,7 +8,15 @@ class FujiCommands(clap.Extension):
 
     @clap.command()
     def setup(self, directory: str) -> None:
-        """Create the necessary files for Fuji to operate"""
+        """Create the necessary files for Fuji to operate.
+
+        It does this by blah blah blah...
+
+        Parameters
+        ----------
+        directory:
+            The location to store all of Fuji's data files.
+        """
         raise NotImplementedError
 
     @clap.command()

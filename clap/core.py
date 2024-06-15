@@ -6,8 +6,9 @@ from os import path
 from typing import TYPE_CHECKING
 
 from .abc import CallableArgument, HasCommands, HasOptions, HasPositionalArgs
-from .commands import inject_commands_from_members_into_self
-from .help import Help
+from .arguments import DEFAULT_HELP
+from .commands import Command, inject_commands_from_members_into_self
+from .help import HelpBuilder, HelpFormatter
 from .parser import Parser
 
 if TYPE_CHECKING:
@@ -84,11 +85,23 @@ class ParserBase:
     def epilog(self) -> str:
         return self._epilog
 
-    def parse_args(self, args: Iterable[str] = sys.argv, /) -> None:
+    def parse_args(
+        self,
+        args: Iterable[str] = sys.argv,
+        /,
+        *,
+        formatter: HelpFormatter = HelpFormatter(),
+    ) -> None:
         parser = Parser(args[1:], command=self)
         ctx = parser.parse()
 
         # check if the user used the --help option
+        if ctx.kwargs.pop("help", False) is True:
+            # display the help message
+            m = ctx.command.get_help_message(formatter=formatter)
+            sys.stdout.write(m)
+            return
+
         print(ctx.args, ctx.kwargs)
 
         try:
@@ -104,6 +117,7 @@ class Application(ParserBase, HasCommands, HasOptions):
     def __post_init__(self) -> None:
         self._commands = {}
         self._options = {}
+        self.add_option(DEFAULT_HELP)
         inject_commands_from_members_into_self(self)
 
     @property
@@ -129,12 +143,53 @@ class Application(ParserBase, HasCommands, HasOptions):
         for command in extension.commands:
             self.add_command(command)
 
+    def get_help_message(self, formatter: HelpFormatter) -> str:
+        builder = (
+            HelpBuilder(formatter=formatter)
+            .add_line(self.brief)
+            .add_section("DESCRIPTION", skip_if_empty=True)
+            .add_section("USAGE")
+            .add_section("OPTIONS", skip_if_empty=True)
+            .add_section("COMMANDS", skip_if_empty=True)
+            .add_line(self.epilog)
+        )
+
+        # description
+        assert (section := builder.get_section("DESCRIPTION")) is not None
+
+        if self.description:
+            section.add_item(name="", brief=self.description)
+
+        # usage
+        usage = self.name
+        options = " | ".join("--{}".format(opt.name) for opt in self.options)
+        usage += " [{}]".format(options)
+
+        if self.commands:
+            usage += " <command> [<args>...]"
+
+        assert (section := builder.get_section("USAGE")) is not None
+        section.add_item(name="", brief=usage)
+
+        # options
+        assert (section := builder.get_section("OPTIONS")) is not None
+        for option in self.options:
+            section.add_item(**option.help_info)
+
+        # commands
+        assert (section := builder.get_section("COMMANDS")) is not None
+        for command in self.commands:
+            section.add_item(**command.help_info)
+
+        return builder.build()
+
 
 class Script(ParserBase, HasOptions, HasPositionalArgs):
 
     def __post_init__(self) -> None:
         self._positionals: List[Positional] = []
         self._options: Dict[str, Option] = {}
+        self.add_option(DEFAULT_HELP)
 
     @property
     def all_options(self) -> Dict[str, Option]:
@@ -144,8 +199,8 @@ class Script(ParserBase, HasOptions, HasPositionalArgs):
     def all_positionals(self) -> List[Positional]:
         return self._positionals
 
-    def main(self, *args: Any, **kwargs: Any) -> Callable[..., int]:
-        def decorator(fn: Callable[..., int], /) -> int:
-            return fn(*args, **kwargs)
+    def main(self, *args: Any, **kwargs: Any) -> Callable[..., Command]:
+        def decorator(fn: Callable[..., int], /) -> Command:
+            return Command.from_function(fn)(*args, **kwargs)
 
         return decorator

@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 COMMAND_BRIEF_REGEX = re.compile(r"^(.*?)(?:\n\n|\Z)", re.DOTALL)
 COMMAND_DESCRIPTION_REGEX = re.compile(
-    r"^(?:.*?\n\n)?(.*?)(?:Parameters\n---+.*?)?(?:\n\n|\Z)", re.DOTALL
+    r"^(?:.*?\n\n)(.*?)(?:Parameters\n---+.*?)?(?:\n\n|\Z)", re.DOTALL
 )
 SECTION_REGEX_FMT = r"{name}\n-+\n\s*(.*?)(?:\n\n|\Z)"
 PARAMETERS_SECTION_REGEX = re.compile(

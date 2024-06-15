@@ -12,8 +12,9 @@ from .abc import (
     HasPositionalArgs,
     ParameterizedArgument,
 )
-from .arguments import Option, Positional
-from .utils import parse_docstring
+from .arguments import Option, Positional, DEFAULT_HELP
+from .utils import parse_docstring, MISSING
+from .help import HelpFormatter, HelpBuilder
 
 if TYPE_CHECKING:
     from builtins import dict as Dict
@@ -144,6 +145,7 @@ class Command(HasOptions, HasPositionalArgs):
         self._options = options
         self._positionals = positionals
         self._parent = parent
+        self.add_option(DEFAULT_HELP)
 
     @classmethod
     def from_function(
@@ -225,6 +227,46 @@ class Command(HasOptions, HasPositionalArgs):
         else:
             return self.callback(*args, **kwargs)
 
+    def get_help_message(self, formatter: HelpFormatter) -> str:
+        builder = (
+            HelpBuilder(formatter=formatter)
+            .add_line(self.brief)
+            .add_section("DESCRIPTION", skip_if_empty=True)
+            .add_section("USAGE")
+            .add_section("OPTIONS", skip_if_empty=True)
+            .add_section("ARGUMENTS", skip_if_empty=True)
+        )
+
+        # description
+        assert (section := builder.get_section("DESCRIPTION")) is not None
+
+        if self.description:
+            section.add_item(name="", brief=self.description)
+
+        # usage
+        usage = self.name
+        options = " | ".join("--{}".format(opt.name) for opt in self.options)
+        usage += " [{}]".format(options)
+
+        for positional in self.all_positionals:
+            fmt = " <{}>" if positional.default is MISSING else " [{}]"
+            usage += fmt.format(positional.name)
+
+        assert (section := builder.get_section("USAGE")) is not None
+        section.add_item(name="", brief=usage)
+
+        # options
+        assert (section := builder.get_section("OPTIONS")) is not None
+        for option in self.options:
+            section.add_item(**option.help_info)
+
+        # arguments
+        assert (section := builder.get_section("ARGUMENTS")) is not None
+        for positional in self.all_positionals:
+            section.add_item(**positional.help_info)
+
+        return builder.build()
+
 
 def command(*args: Any, **kwargs: Any) -> Callable[..., Command]:
 
@@ -263,6 +305,7 @@ class Group(HasCommands, HasOptions):
         self._options = options
         self._parent = parent
         inject_commands_from_members_into_self(self)
+        self.add_option(DEFAULT_HELP)
 
     @classmethod
     def from_function(
@@ -356,6 +399,44 @@ class Group(HasCommands, HasOptions):
             return g
 
         return decorator
+
+    def get_help_message(self, formatter: HelpFormatter) -> str:
+        builder = (
+            HelpBuilder(formatter=formatter)
+            .add_line(self.brief)
+            .add_section("DESCRIPTION", skip_if_empty=True)
+            .add_section("USAGE")
+            .add_section("OPTIONS", skip_if_empty=True)
+            .add_section("COMMANDS", skip_if_empty=True)
+        )
+
+        # description
+        assert (section := builder.get_section("DESCRIPTION")) is not None
+        if self.description:
+            section.add_item(name="", brief=self.description)
+
+        # usage
+        usage = self.name
+        options = " | ".join("--{}".format(opt.name) for opt in self.options)
+        usage += " [{}]".format(options)
+
+        if self.commands:
+            usage += " <command> [<args>...]"
+
+        assert (section := builder.get_section("USAGE")) is not None
+        section.add_item(name="", brief=usage)
+
+        # options
+        assert (section := builder.get_section("OPTIONS")) is not None
+        for option in self.options:
+            section.add_item(**option.help_info)
+
+        # commands
+        assert (section := builder.get_section("COMMANDS")) is not None
+        for command in self.commands:
+            section.add_item(**command.help_info)
+
+        return builder.build()
 
 
 def group(*args: Any, **kwargs: Any) -> Callable[..., Group]:

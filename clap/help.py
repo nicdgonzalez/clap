@@ -3,8 +3,9 @@ from __future__ import annotations
 import copy
 import dataclasses
 import os
+import re
 import textwrap
-from typing import TYPE_CHECKING, NamedTuple, NewType
+from typing import TYPE_CHECKING, NamedTuple, NewType, TypedDict
 
 if TYPE_CHECKING:
     from builtins import dict as Dict
@@ -13,9 +14,11 @@ if TYPE_CHECKING:
 
     from typing_extensions import Self
 
+HelpInfo = TypedDict("HelpInfo", {"name": str, "brief": str})
+
 
 class SectionItem(NamedTuple):
-    name: Optional[str]
+    name: str
     brief: Optional[str]
 
     def __post_init__(self) -> None:
@@ -38,7 +41,10 @@ class Section:
     def marker(self) -> SectionMarker:
         return SectionMarker("__{}_MARKER__".format(self.name.upper()))
 
-    def add_child(self, *, name: str, brief: str = "") -> None:
+    def __iter__(self) -> Iterator[SectionItem]:
+        return self.children.__iter__()
+
+    def add_item(self, *, name: str, brief: str = "") -> None:
         self.children.append(SectionItem(name=name, brief=brief))
 
 
@@ -48,7 +54,7 @@ class TreeData:
     message: str = ""
 
     def __iter__(self) -> Iterator[Section]:
-        return self.data.values()
+        return self.data.values().__iter__()
 
     def add_line(self, line: str, /) -> None:
         self.message += "{}\n".format(line)
@@ -116,13 +122,15 @@ class HelpBuilder:
                 # remove the marker from the message if the section is empty.
                 # if we don't do this, the message will have a trailing newline
                 # for every skipped section
-                m = self._tree.message.replace("%({})s".format(section.marker))
+                m = self._tree.message.replace(
+                    "%({})s".format(section.marker), ""
+                )
                 self._tree.message = m
                 continue
 
             message_map[section.marker] = message
 
-        return self._tree.message % message_map
+        return re.sub("\n{3,}", "\n\n", self._tree.message % message_map)
 
     def add_section(
         self,
@@ -166,6 +174,9 @@ class HelpBuilder:
         )
         message = "\n".join(wrapped)
         self._tree.add_line(message)
+
+        if not self._fmt.compact:
+            self._tree.add_newline()
 
         return self
 
@@ -221,7 +232,7 @@ class HelpBuilder:
         return message
 
     def _create_section_header(self, section: Section, /) -> str:
-        message = "{}:".format(section.brief)
+        message = "{}:".format(section.name)
 
         if section.brief:
             message += " {}".format(section.brief)
@@ -233,7 +244,7 @@ class HelpBuilder:
     def _format_item(
         self, item: SectionItem, *, name_width: int, **params: Any
     ) -> str:
-        name = (item.name or "").ljust(name_width)
+        name = item.name.ljust(name_width)
         placeholder = params.get("placeholder", self._fmt.placeholder)
         cut = name_width - len(placeholder)
 
@@ -243,7 +254,7 @@ class HelpBuilder:
         text = (
             "{}  {}".format(name, item.brief)
             if name and item.brief
-            else (name or item.brief)
+            else (name if name != "" else item.brief)
         )
         wrapped = textwrap.wrap(
             text,

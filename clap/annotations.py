@@ -5,26 +5,16 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Optional
+    from typing_extensions import Self
 
 
-class Alias:
+class Alias(str):
 
-    def __init__(self, value: str, /) -> None:
+    def __new__(cls, value: str) -> Self:
         if len(value) > 1:
             raise ValueError("value must be a single character")
 
-        self._value = value
-
-    @property
-    def value(self) -> str:
-        return self._value
-
-    @value.setter
-    def value(self, value: str, /) -> None:
-        if len(value) > 1:
-            raise ValueError("value must be a single character")
-
-        self._value = value
+        return super().__new__(cls, value)
 
 
 class Range:

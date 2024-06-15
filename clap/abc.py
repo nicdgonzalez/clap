@@ -4,9 +4,10 @@ import inspect
 import logging
 from typing import TYPE_CHECKING, Protocol, overload, runtime_checkable
 
-from .annotations import Range
+from .annotations import Range, Alias
 from .converter import convert
 from .errors import CommandRegistrationError, OptionRegistrationError
+from .help import HelpFormatter, HelpInfo
 
 if TYPE_CHECKING:
     from builtins import dict as Dict
@@ -42,6 +43,10 @@ class Argument(Protocol):
     def brief(self) -> str:
         raise NotImplementedError
 
+    @property
+    def help_info(self) -> HelpInfo:
+        return {"name": self.name, "brief": self.brief}
+
 
 @runtime_checkable
 class CallableArgument(Argument, Protocol):
@@ -73,6 +78,9 @@ class CallableArgument(Argument, Protocol):
 
     @parent.setter
     def parent(self, parent: HasCommands) -> None:
+        raise NotImplementedError
+
+    def get_help_message(self, formatter: HelpFormatter) -> str:
         raise NotImplementedError
 
 
@@ -184,7 +192,7 @@ class HasOptions(CallableArgument, Protocol):
 
         self.all_options[option.name] = option
 
-        if option.alias is None:
+        if not option.alias:
             return
 
         if option.alias in self.all_options.keys():
@@ -203,7 +211,7 @@ class HasOptions(CallableArgument, Protocol):
         if option.alias:
             if name == option.alias:
                 # user was trying to remove only the alias
-                option.alias.value = ""
+                option.alias = Alias("")
             else:
                 # otherwise, remove the alias as well
                 _ = self.all_options.pop(option.alias, None)

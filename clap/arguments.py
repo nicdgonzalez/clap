@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, TypeVar, get_origin
 
 from .abc import ParameterizedArgument
 from .annotations import Alias, Conflicts, Range, Requires
+from .help import HelpInfo
 from .utils import MISSING
 
 if TYPE_CHECKING:
@@ -118,6 +119,20 @@ class Positional(ParameterizedArgument):
     def n_args(self) -> Range:
         return self._n_args
 
+    @property
+    def help_info(self) -> HelpInfo:
+        brief = self.brief
+
+        if self.default is not MISSING:
+            if self.target_type not in (bool,):
+                brief += " [{}]".format(self.default)
+            else:
+                pass
+        else:
+            brief += " (required)"
+
+        return {"name": self.name, "brief": brief}
+
 
 class Option(Positional):
 
@@ -161,3 +176,24 @@ class Option(Positional):
     @property
     def conflicts(self) -> Conflicts[str]:
         return self._conflicts
+
+    @property
+    def help_info(self) -> HelpInfo:
+        name = "--{}".format(self.name)
+
+        if self.alias:
+            name = "-{}, ".format(self.alias) + name
+
+        data = super().help_info
+        data.update(name=name)
+        return data
+
+
+DEFAULT_HELP = Option(
+    "help",
+    "Shows this help message and exits",
+    target_type=bool,
+    default=False,
+    n_args=(0, 0),
+    alias="h",
+)

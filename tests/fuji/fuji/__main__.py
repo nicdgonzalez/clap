@@ -4,7 +4,7 @@ import clap
 
 app = clap.Application(
     name="fuji",
-    brief="A command-line application for managing Minecraft server",
+    brief="A command-line application for managing Minecraft servers.",
 )
 
 extensions = [
