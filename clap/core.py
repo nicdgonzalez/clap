@@ -205,3 +205,7 @@ class Script(ParserBase, HasOptions, HasPositionalArgs):
             return cast(int, Command.from_function(fn)(*args, **kwargs))
 
         return decorator
+
+    def get_help_message(self, formatter: HelpFormatter) -> str:
+        # TODO: steal help message from Command
+        raise NotImplementedError
