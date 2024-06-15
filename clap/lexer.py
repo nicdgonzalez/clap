@@ -89,7 +89,8 @@ class Token:
 
         if not remainder:
             # This is stdin. There are no flags.
-            return (("", ""),)
+            yield "", ""
+            raise StopIteration
 
         for index, option in enumerate(remainder):
             try:
@@ -108,6 +109,8 @@ class Token:
             else:
                 assert option.isalpha()
                 yield (option, "")
+
+        raise StopIteration
 
     def from_argument(self) -> str:
         return self.value[:]

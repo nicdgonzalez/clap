@@ -19,11 +19,7 @@ HelpInfo = TypedDict("HelpInfo", {"name": str, "brief": str})
 
 class SectionItem(NamedTuple):
     name: str
-    brief: Optional[str]
-
-    def __post_init__(self) -> None:
-        if self.name is None and self.brief is None:
-            raise ValueError("name and brief can not both be None")
+    brief: str = ""
 
 
 SectionMarker = NewType("SectionMarker", str)
@@ -210,7 +206,7 @@ class HelpBuilder:
         # if there is no name or no brief, treat it as if it is a paragraph
         # and remove the max lines limit
         for child in section.children:
-            if child.name is None or child.brief is None:
+            if not child.name or not child.brief:
                 max_lines = None
                 break
             else:
@@ -251,11 +247,8 @@ class HelpBuilder:
         if len(name) > name_width:
             name = name[:cut] + placeholder
 
-        text = (
-            "{}  {}".format(name, item.brief)
-            if name and item.brief
-            else (name if name != "" else item.brief)
-        )
+        text = "{}  {}".format(name, item.brief).strip()
+
         wrapped = textwrap.wrap(
             text,
             width=self._fmt.width,

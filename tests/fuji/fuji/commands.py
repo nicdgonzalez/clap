@@ -10,8 +10,6 @@ class FujiCommands(clap.Extension):
     def setup(self, directory: str) -> None:
         """Create the necessary files for Fuji to operate.
 
-        It does this by blah blah blah...
-
         Parameters
         ----------
         directory:
@@ -21,22 +19,22 @@ class FujiCommands(clap.Extension):
 
     @clap.command()
     def list(self) -> None:
-        """Display all of the available Minecraft servers"""
+        """Display all of the available Minecraft servers."""
         raise NotImplementedError
 
     @clap.command()
     def new(self, name: str, *, accept_eula: bool = False) -> None:
-        """Create a new Minecraft server"""
+        """Create a new Minecraft server."""
         raise NotImplementedError
 
     @clap.command()
     def start(self, name: str) -> None:
-        """Start the specified Minecraft server"""
+        """Start the specified Minecraft server."""
         raise NotImplementedError
 
     @clap.command()
     def stop(self, name: str) -> None:
-        """Stop the specified Minecraft server"""
+        """Stop the specified Minecraft server."""
         raise NotImplementedError
 
 

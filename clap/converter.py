@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, TypeVar, Union, get_args, get_origin
+from typing import (
+    TYPE_CHECKING,
+    Literal,
+    TypeVar,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+)
 
 from .utils import MISSING
 
@@ -24,7 +32,7 @@ def convert_to_bool(argument: str, /) -> bool:
         raise ValueError("unable to convert {!r} to bool".format(argument))
 
 
-def actual_conversion(argument: str, converter: Type[T]) -> Optional[T]:
+def actual_conversion(argument: str, converter: Type[Any]) -> Optional[Any]:
     if converter is bool:
         return convert_to_bool(argument)
 
@@ -43,10 +51,10 @@ def actual_conversion(argument: str, converter: Type[T]) -> Optional[T]:
 
 def convert(
     argument: str,
-    converter: Type[T],
+    converter: Type[Any],
     /,
     default: T = MISSING,
-) -> Optional[T]:
+) -> Optional[Any]:
     origin = get_origin(converter)
     # value: Optional[T]
 

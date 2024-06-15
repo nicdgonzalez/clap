@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 import sys
 from os import path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, cast
 
 from .abc import CallableArgument, HasCommands, HasOptions, HasPositionalArgs
 from .arguments import DEFAULT_HELP
@@ -14,7 +14,7 @@ from .parser import Parser
 if TYPE_CHECKING:
     from builtins import dict as Dict
     from builtins import list as List
-    from typing import Any, Callable, Iterable, Optional
+    from typing import Any, Optional
 
     from typing_extensions import Self
 
@@ -87,12 +87,13 @@ class ParserBase:
 
     def parse_args(
         self,
-        args: Iterable[str] = sys.argv,
+        args: List[str] = sys.argv,
         /,
         *,
         formatter: HelpFormatter = HelpFormatter(),
     ) -> None:
-        parser = Parser(args[1:], command=self)
+        assert type(self) is not ParserBase, "do not use ParserBase directly"
+        parser = Parser(args[1:], command=self)  # type: ignore
         ctx = parser.parse()
 
         # check if the user used the --help option
@@ -115,8 +116,8 @@ class ParserBase:
 class Application(ParserBase, HasCommands, HasOptions):
 
     def __post_init__(self) -> None:
-        self._commands = {}
-        self._options = {}
+        self._commands: Dict[str, CallableArgument] = {}
+        self._options: Dict[str, Option] = {}
         self.add_option(DEFAULT_HELP)
         inject_commands_from_members_into_self(self)
 
@@ -199,8 +200,8 @@ class Script(ParserBase, HasOptions, HasPositionalArgs):
     def all_positionals(self) -> List[Positional]:
         return self._positionals
 
-    def main(self, *args: Any, **kwargs: Any) -> Callable[..., Command]:
-        def decorator(fn: Callable[..., int], /) -> Command:
-            return Command.from_function(fn)(*args, **kwargs)
+    def main(self, *args: Any, **kwargs: Any) -> Callable[..., int]:
+        def decorator(fn: Callable[..., int], /) -> int:
+            return cast(int, Command.from_function(fn)(*args, **kwargs))
 
         return decorator

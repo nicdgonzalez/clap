@@ -12,9 +12,9 @@ from .abc import (
     HasPositionalArgs,
     ParameterizedArgument,
 )
-from .arguments import Option, Positional, DEFAULT_HELP
-from .utils import parse_docstring, MISSING
-from .help import HelpFormatter, HelpBuilder
+from .arguments import DEFAULT_HELP, Option, Positional
+from .help import HelpBuilder, HelpFormatter
+from .utils import MISSING, parse_docstring
 
 if TYPE_CHECKING:
     from builtins import dict as Dict
@@ -50,8 +50,8 @@ def inject_commands_from_members_into_self(obj: HasCommands, /) -> None:
 class CommandParameters:
     options: List[Option] = dataclasses.field(default_factory=list)
     positionals: List[Positional] = dataclasses.field(default_factory=list)
-    mapping: Dict[Type[ParameterizedArgument], List[ParameterizedArgument]] = (
-        dataclasses.field(default_factory=dict)
+    mapping: Dict[Type[Any], List[ParameterizedArgument]] = dataclasses.field(
+        default_factory=dict
     )
 
     def __post_init__(self) -> None:
@@ -59,7 +59,7 @@ class CommandParameters:
             Option: self.options,
             Positional: self.positionals,
         }
-        self.mapping.update(default_mapping)
+        self.mapping.update(default_mapping)  # type: ignore
 
 
 def is_method_with_self(fn: Callable[..., Any], /) -> bool:
@@ -84,7 +84,7 @@ def is_method_with_self(fn: Callable[..., Any], /) -> bool:
     )
 
 
-PARAMETER_KIND_MAP: Dict[inspect.Parameter, ParameterizedArgument] = {
+PARAMETER_KIND_MAP: Dict[Any, Type[ParameterizedArgument]] = {
     inspect.Parameter.POSITIONAL_ONLY: Positional,
     inspect.Parameter.VAR_POSITIONAL: Positional,
     inspect.Parameter.POSITIONAL_OR_KEYWORD: Positional,
@@ -108,7 +108,8 @@ def convert_function_parameters(
     ctx = ctx or CommandParameters()
 
     for parameter in parameters:
-        t = PARAMETER_KIND_MAP.get(parameter.kind)
+        t = PARAMETER_KIND_MAP[parameter.kind]
+
         obj = t.from_parameter(
             parameter,
             brief=param_docs.get(parameter.name, ""),
@@ -338,7 +339,7 @@ class Group(HasCommands, HasOptions):
         return this
 
     @property
-    def all_commands(self) -> Dict[str, Command]:
+    def all_commands(self) -> Dict[str, CallableArgument]:
         return self._commands
 
     @property
@@ -395,7 +396,7 @@ class Group(HasCommands, HasOptions):
         def decorator(fn: Callable[..., Any], /) -> Group:
             kwargs.setdefault("parent", self)
             g = Group.from_function(fn, *args, **kwargs)
-            self.add_Group(g)
+            self.add_command(g)
             return g
 
         return decorator

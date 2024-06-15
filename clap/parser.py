@@ -26,7 +26,7 @@ _log = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class ParsedArgs:
-    command: Union[HasCommands, CallableArgument] = None
+    command: Union[HasCommands, CallableArgument]
     args: List[Any] = dataclasses.field(default_factory=list)
     kwargs: Dict[str, Any] = dataclasses.field(default_factory=dict)
 
@@ -86,7 +86,8 @@ class Parser:
             raise NotImplementedError
 
     def handle_deferred_tokens(self) -> None:
-        token_map: Dict[TokenType, Callable[Token, Optional[Token]]] = {
+        token_map: Dict[TokenType, Callable[..., None]]
+        token_map = {
             TokenType.LONG: self.handle_token_long,
             TokenType.SHORT: self.handle_token_short,
             TokenType.ARGUMENT: self.handle_token_argument,
@@ -103,21 +104,22 @@ class Parser:
         *,
         next_token: Optional[Token],
     ) -> None:
-        assert self.ctx.command is not None, self.ctx.command
-        command = cast(HasOptions, self.ctx.command)
+        assert isinstance(self.ctx.command, HasOptions)
         flag, value = token.from_long_option()
 
         try:
-            option = command.all_options[token.snake_case]
+            option = self.ctx.command.all_options[token.snake_case]
         except KeyError:
             raise InvalidOptionError(self.ctx.command, token)
 
         if value == "":
-            valid_next_token = next_token and next_token.is_argument
-
             if option.target_type is bool:
                 value = str(not option.default)
-            elif valid_next_token and option.n_args.maximum > 0:
+            elif (
+                next_token is not None
+                and next_token.is_argument
+                and option.n_args.maximum > 0
+            ):
                 value = next_token.from_argument()
                 _ = self.deferred.pop(0)
             else:
@@ -134,17 +136,16 @@ class Parser:
         *,
         next_token: Optional[Token],
     ) -> None:
-        assert self.ctx.command is not None, self.ctx.command
-        command = cast(HasOptions, self.ctx.command)
+        assert isinstance(self.ctx.command, HasOptions)
 
         for flag, value in token.from_short_option():
             try:
-                option = command.all_options[flag]
+                option = self.ctx.command.all_options[flag]
             except KeyError:
-                raise InvalidOptionError(self, token)
+                raise InvalidOptionError(self.ctx.command, token)
 
             new_token_type = TokenType.LONG
-            new_value = "--{}".format(option.replace("_", "-"))
+            new_value = "--{}".format(option.name.replace("_", "-"))
 
             if value is not None:
                 new_value += "={}".format(value)
@@ -164,19 +165,14 @@ class Parser:
             try:
                 self.ctx.command = self.ctx.command.all_commands[value]
             except KeyError:
-                raise InvalidCommandError(self.ctx.command, token)
+                # even though the check already proves it is a HasCommands...
+                command = cast(HasCommands, self.ctx.command)
+                raise InvalidCommandError(command, token)
 
             return
         else:
             assert isinstance(self.ctx.command, HasPositionalArgs)
-            command = cast(HasPositionalArgs, self.ctx.command)
             index = len(self.ctx.args)
-            _log.debug(
-                "index: {}, all_positionals: {}".format(
-                    index,
-                    ",".join(obj.name for obj in command.all_positionals),
-                )
-            )
 
             try:
                 argument = self.ctx.command.all_positionals[index]

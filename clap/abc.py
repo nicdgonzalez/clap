@@ -4,7 +4,7 @@ import inspect
 import logging
 from typing import TYPE_CHECKING, Protocol, overload, runtime_checkable
 
-from .annotations import Range, Alias
+from .annotations import Alias, Range
 from .converter import convert
 from .errors import CommandRegistrationError, OptionRegistrationError
 from .help import HelpFormatter, HelpInfo
@@ -80,6 +80,9 @@ class CallableArgument(Argument, Protocol):
     def parent(self, parent: HasCommands) -> None:
         raise NotImplementedError
 
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        raise NotImplementedError
+
     def get_help_message(self, formatter: HelpFormatter) -> str:
         raise NotImplementedError
 
@@ -97,7 +100,11 @@ class ParameterizedArgument(Argument, Protocol):
 
     @classmethod
     def from_parameter(
-        cls, parameter: inspect.Parameter, /, brief: str, t: Type[Any]
+        cls,
+        parameter: inspect.Parameter,
+        /,
+        brief: str,
+        target_type: Type[Any],
     ) -> Self:
         raise NotImplementedError
 

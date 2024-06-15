@@ -64,7 +64,9 @@ class Positional(ParameterizedArgument):
                 valid_default = isinstance(default, target_type)
             except TypeError:
                 # Generic in second argument to isinstance()
-                valid_default = isinstance(default, get_origin(target_type))
+                origin = get_origin(target_type)
+                assert origin is not None, origin
+                valid_default = isinstance(default, origin)
 
             if not valid_default:
                 e = "default for {!r} must be of type {}, not {}"
@@ -169,12 +171,16 @@ class Option(Positional):
     def alias(self) -> Alias:
         return self._alias
 
+    @alias.setter
+    def alias(self, value: str, /) -> None:
+        self._alias = Alias(value)
+
     @property
-    def requires(self) -> Requires[str]:
+    def requires(self) -> Requires:
         return self._requires
 
     @property
-    def conflicts(self) -> Conflicts[str]:
+    def conflicts(self) -> Conflicts:
         return self._conflicts
 
     @property
@@ -184,9 +190,7 @@ class Option(Positional):
         if self.alias:
             name = "-{}, ".format(self.alias) + name
 
-        data = super().help_info
-        data.update(name=name)
-        return data
+        return HelpInfo(name=name, brief=super().help_info["brief"])
 
 
 DEFAULT_HELP = Option(

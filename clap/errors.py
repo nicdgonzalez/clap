@@ -70,5 +70,6 @@ class TooManyArgumentsError(ClapException):
 
     def __init__(self, obj: HasPositionalArgs, token: Token) -> None:
         m = "too many arguments provided to {}: {}"
-        args = [*obj.all_positionals, token]
+        args = [p.name for p in obj.all_positionals]
+        args.append(token.value)
         super().__init__(m.format(obj.name, ",".join(args)))
