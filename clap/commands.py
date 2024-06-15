@@ -104,7 +104,7 @@ def convert_function_parameters(
     if is_method_with_self(fn):
         _ = parameters.pop(0)
 
-    parameter_types = get_type_hints(fn)
+    parameter_types = get_type_hints(fn, include_extras=True)
     ctx = ctx or CommandParameters()
 
     for parameter in parameters:

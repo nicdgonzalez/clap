@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, TypeVar, get_origin
+from typing import TYPE_CHECKING, Annotated, TypeVar, get_args, get_origin
 
 from .abc import ParameterizedArgument
 from .annotations import Alias, Conflicts, Range, Requires
@@ -66,6 +66,12 @@ class Positional(ParameterizedArgument):
                 # Generic in second argument to isinstance()
                 origin = get_origin(target_type)
                 assert origin is not None, origin
+
+                if origin is Annotated:
+                    real_type = get_args(target_type)
+                    assert len(real_type) >= 2
+                    origin = real_type[0]
+
                 valid_default = isinstance(default, origin)
 
             if not valid_default:
@@ -94,8 +100,8 @@ class Positional(ParameterizedArgument):
             ),
         }
 
-        if hasattr(parameter, "__metadata__"):
-            metadata = getattr(parameter, "__metadata__")
+        if hasattr(target_type, "__metadata__"):
+            metadata = getattr(target_type, "__metadata__")
             kwarg_map = convert_metadata(metadata)
             kwargs.update(**kwarg_map)
 

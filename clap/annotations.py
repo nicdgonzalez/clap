@@ -8,6 +8,8 @@ if TYPE_CHECKING:
 
     from typing_extensions import Self
 
+__all__ = ("Alias", "Range", "Requires", "Conflicts")
+
 
 class Alias(str):
 

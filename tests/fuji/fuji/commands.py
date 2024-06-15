@@ -1,3 +1,5 @@
+from typing_extensions import Annotated
+
 import clap
 
 
@@ -23,7 +25,12 @@ class FujiCommands(clap.Extension):
         raise NotImplementedError
 
     @clap.command()
-    def new(self, name: str, *, accept_eula: bool = False) -> None:
+    def new(
+        self,
+        name: str,
+        *,
+        accept_eula: Annotated[bool, clap.Alias("y")] = False,
+    ) -> None:
         """Create a new Minecraft server."""
         raise NotImplementedError
 

@@ -1,4 +1,5 @@
 from .abc import *
+from .annotations import *
 from .arguments import *
 from .commands import *
 from .core import *
