@@ -176,9 +176,83 @@ class HelpBuilder:
         return self
 
     def _format_section(self, section: Section, /) -> str:
-        raise NotImplementedError
+        if not section.children and section.skip_if_empty:
+            return ""
+
+        message = self._create_section_header(section)
+
+        if not section.children:
+            if section.placeholder is not None:
+                message += "{}{}\n".format(
+                    self.default_indent, section.placeholder
+                )
+
+            return message
+
+        # prepare the arguments that will be passed to `self._format_item()`
+
+        longest = max((len(c.name) for c in section.children), default=0)
+        name_width = min(longest, self._fmt.name_width)
+        indent_width = self._fmt.indent + name_width
+        max_lines: Optional[int] = 2
+
+        # if there is no name or no brief, treat it as if it is a paragraph
+        # and remove the max lines limit
+        for child in section.children:
+            if child.name is None or child.brief is None:
+                max_lines = None
+                break
+            else:
+                continue
+        else:
+            # +2 for the double whitespace separator between name and brief
+            indent_width += 2
+
+        subsequent_indent = " " * indent_width
+
+        for child in section.children:
+            message += self._format_item(
+                child,
+                name_width=name_width,
+                subsequent_indent=subsequent_indent,
+                max_lines=max_lines,
+            )
+
+        return message
+
+    def _create_section_header(self, section: Section, /) -> str:
+        message = "{}:".format(section.brief)
+
+        if section.brief:
+            message += " {}".format(section.brief)
+
+        message += "\n"
+
+        return message
 
     def _format_item(
         self, item: SectionItem, *, name_width: int, **params: Any
     ) -> str:
-        raise NotImplementedError
+        name = (item.name or "").ljust(name_width)
+        placeholder = params.get("placeholder", self._fmt.placeholder)
+        cut = name_width - len(placeholder)
+
+        if len(name) > name_width:
+            name = name[:cut] + placeholder
+
+        text = (
+            "{}  {}".format(name, item.brief)
+            if name and item.brief
+            else (name or item.brief)
+        )
+        wrapped = textwrap.wrap(
+            text,
+            width=self._fmt.width,
+            initial_indent=self.indent,
+            subsequent_indent=params.pop("subsequent_indent", self.indent),
+            placeholder=params.pop("placeholder", self._fmt.placeholder),
+            max_lines=params.pop("max_lines", 2),
+            **params,
+        )
+
+        return "{}\n".format("\n".join(wrapped))
