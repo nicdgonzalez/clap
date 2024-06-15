@@ -55,12 +55,11 @@ def convert(
     /,
     default: T = MISSING,
 ) -> Optional[Any]:
+    # TODO: finish converter logic
     origin = get_origin(converter)
-    # value: Optional[T]
 
     if origin is Union:
-        union_args = get_args(converter)
-        print(union_args)
+        # union_args = get_args(converter)
         raise NotImplementedError
     elif origin is Literal:
         raise NotImplementedError

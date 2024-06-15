@@ -103,8 +103,6 @@ class ParserBase:
             sys.stdout.write(m)
             return
 
-        print(ctx.args, ctx.kwargs)
-
         try:
             ctx.command(*ctx.args, **ctx.kwargs)
         except TypeError:  # argument-related error
