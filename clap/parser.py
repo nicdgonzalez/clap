@@ -1,43 +1,55 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 from typing import TYPE_CHECKING, cast
 
-from .abc import CallableArgument, HasCommands, HasOptions
+from .abc import CallableArgument, HasCommands, HasOptions, HasPositionalArgs
 from .errors import (
     InvalidCommandError,
     InvalidOptionError,
     TooManyArgumentsError,
 )
-from .lexer import Lexer
+from .lexer import Lexer, TokenType
 
 if TYPE_CHECKING:
     from builtins import dict as Dict
     from builtins import list as List
-    from typing import Any, Callable, Optional
+    from typing import Any, Callable, Optional, Union
 
-    from .lexer import Token, TokenType
+    from .lexer import Token
 
 __all__ = ("ParsedArgs", "Parser")
+
+_log = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
 class ParsedArgs:
-    command: Optional[CallableArgument] = None
+    command: Union[HasCommands, CallableArgument] = None
     args: List[Any] = dataclasses.field(default_factory=list)
     kwargs: Dict[str, Any] = dataclasses.field(default_factory=dict)
 
 
 class Parser:
 
-    def __init__(self, args: List[str], /) -> None:
+    def __init__(
+        self, args: List[str], /, command: Union[HasCommands, CallableArgument]
+    ) -> None:
         self.lexer = Lexer(args[:])
         self.deferred: List[Token] = []
-        self.ctx = ParsedArgs()
+        self.ctx = ParsedArgs(command=command)
 
     def parse(self) -> ParsedArgs:
         for token in self.lexer:
+            _log.debug(
+                "parsing token: ({}, {!r})".format(
+                    token.token_type, token.value
+                )
+            )
             self.handle_token(token)
+
+        self.handle_deferred_tokens()
 
         # TODO: fill in options that have default values set
 
@@ -95,7 +107,7 @@ class Parser:
         flag, value = token.from_long_option()
 
         try:
-            option = command.all_options.get(token.snake_case)
+            option = command.all_options[token.snake_case]
         except KeyError:
             raise InvalidOptionError(self.ctx.command, token)
 
@@ -106,8 +118,11 @@ class Parser:
                 value = str(not option.default)
             elif valid_next_token and option.n_args.maximum > 0:
                 value = next_token.from_argument()
+                _ = self.deferred.pop(0)
             else:
                 pass  # value stays an empty string
+
+        _log.debug("flag: {}, value: {}".format(flag, value))
 
         converted_value = option.convert(value)
         self.ctx.kwargs[option.name] = converted_value
@@ -144,20 +159,28 @@ class Parser:
     ) -> None:
         value = token.from_argument()
 
-        if self.ctx.command is None or isinstance(self.ctx.command, HasCommands):
+        if isinstance(self.ctx.command, HasCommands):
             try:
                 self.ctx.command = self.ctx.command.all_commands[value]
             except KeyError:
                 raise InvalidCommandError(self.ctx.command, token)
 
             return
+        else:
+            assert isinstance(self.ctx.command, HasPositionalArgs)
+            command = cast(HasPositionalArgs, self.ctx.command)
+            index = len(self.ctx.args)
+            _log.debug(
+                "index: {}, all_positionals: {}".format(
+                    index,
+                    ",".join(obj.name for obj in command.all_positionals),
+                )
+            )
 
-        index = len(self.ctx.args)
+            try:
+                argument = self.ctx.command.all_positionals[index]
+            except IndexError:
+                raise TooManyArgumentsError(self.ctx.command, token)
 
-        try:
-            argument = self.ctx.command.all_positionals[index]
-        except IndexError:
-            raise TooManyArgumentsError(self.ctx.command, token)
-
-        converted_value = argument.convert(value)
-        self.ctx.args.append(converted_value)
+            converted_value = argument.convert(value)
+            self.ctx.args.append(converted_value)

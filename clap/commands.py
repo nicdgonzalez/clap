@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
+import logging
 from typing import TYPE_CHECKING, get_type_hints
 
 from .abc import (
@@ -11,7 +12,7 @@ from .abc import (
     HasPositionalArgs,
     ParameterizedArgument,
 )
-from .parameters import Option, Positional
+from .arguments import Option, Positional
 from .utils import parse_docstring
 
 if TYPE_CHECKING:
@@ -23,6 +24,8 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
 __all__ = ("Command", "command", "Group", "group")
+
+_log = logging.getLogger(__name__)
 
 
 def inject_commands_from_members_into_self(obj: HasCommands, /) -> None:
@@ -212,6 +215,11 @@ class Command(HasOptions, HasPositionalArgs):
         self._parent = value
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        _log.debug(
+            "passing args to command {!r}: (args: {}, kwargs: {})".format(
+                self.name, args, kwargs
+            )
+        )
         if hasattr(self.callback, "__self__"):
             return self.callback(self.callback.__self__, *args, **kwargs)
         else:

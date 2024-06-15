@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from .abc import CallableArgument, HasCommands, HasOptions, HasPositionalArgs
 from .commands import inject_commands_from_members_into_self
+from .help import Help
 from .parser import Parser
 
 if TYPE_CHECKING:
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 
     from typing_extensions import Self
 
-    from .parameters import Option, Positional
+    from .arguments import Option, Positional
 
 
 __all__ = (
@@ -84,10 +85,11 @@ class ParserBase:
         return self._epilog
 
     def parse_args(self, args: Iterable[str] = sys.argv, /) -> None:
-        parser = Parser(args[1:])
+        parser = Parser(args[1:], command=self)
         ctx = parser.parse()
 
         # check if the user used the --help option
+        print(ctx.args, ctx.kwargs)
 
         try:
             ctx.command(*ctx.args, **ctx.kwargs)

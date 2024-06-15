@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, TypeVar, get_origin
 
 from .abc import ParameterizedArgument
 from .annotations import Alias, Conflicts, Range, Requires
@@ -58,12 +58,18 @@ class Positional(ParameterizedArgument):
 
         self._target_type = target_type
 
-        # `default` can be MISSING since `None` is a valid value
-        if default is not MISSING and not isinstance(default, target_type):
-            raise TypeError("default must be an instance of target_type")
-        else:
-            self._default = default
+        if default is not MISSING:
+            try:
+                valid_default = isinstance(default, target_type)
+            except TypeError:
+                # Generic in second argument to isinstance()
+                valid_default = isinstance(default, get_origin(target_type))
 
+            if not valid_default:
+                e = "default for {!r} must be of type {}, not {}"
+                raise TypeError(e.format(name, target_type, type(default)))
+
+        self._default = default
         self._n_args = Range(*sorted(n_args))
 
     @classmethod

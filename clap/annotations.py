@@ -36,6 +36,14 @@ class Range:
         self._minimum = minimum
         self._maximum = maximum if maximum is not None else minimum
 
+    @property
+    def minimum(self) -> int:
+        return self._minimum
+
+    @property
+    def maximum(self) -> int:
+        return self._maximum
+
 
 if sys.version_info >= (3, 9):
     _Set = set[str]

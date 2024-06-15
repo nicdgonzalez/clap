@@ -2,7 +2,10 @@ import sys
 
 import clap
 
-app = clap.Application()
+app = clap.Application(
+    name="fuji",
+    brief="A command-line application for managing Minecraft server",
+)
 
 extensions = [
     ".commands",

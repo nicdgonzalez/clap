@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import inspect
+import logging
 from typing import TYPE_CHECKING, Protocol, overload, runtime_checkable
 
 from .annotations import Range
+from .converter import convert
 from .errors import CommandRegistrationError, OptionRegistrationError
 
 if TYPE_CHECKING:
@@ -15,7 +17,7 @@ if TYPE_CHECKING:
 
     from typing_extensions import Self
 
-    from .parameters import Option, Positional
+    from .arguments import Option, Positional
 
 __all__ = (
     "Argument",
@@ -25,6 +27,8 @@ __all__ = (
     "HasOptions",
     "HasPositionalArgs",
 )
+
+_log = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -102,8 +106,7 @@ class ParameterizedArgument(Argument, Protocol):
         raise NotImplementedError
 
     def convert(self, value: str, /) -> Any:
-        # return converter(value, self.target_type)
-        return value
+        return convert(value, self.target_type, default=self.default)
 
 
 @runtime_checkable

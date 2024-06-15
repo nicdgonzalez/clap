@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import enum
+import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from builtins import list as List
     from builtins import tuple as Tuple
     from typing import Iterator, Optional
+
+_log = logging.getLogger(__name__)
 
 
 class TokenType(enum.IntEnum):

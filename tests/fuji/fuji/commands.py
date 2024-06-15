@@ -6,14 +6,6 @@ class FujiCommands(clap.Extension):
     def __init__(self, app: clap.Application, /) -> None:
         self.app = app
 
-    @clap.group()
-    def server(self) -> None:
-        print("you called a group directly :O")
-
-    @server.command()
-    def hello(self, name: str) -> None:
-        print("Hello, {}!".format(name))
-
     @clap.command()
     def setup(self, directory: str) -> None:
         """Create the necessary files for Fuji to operate"""
