@@ -132,9 +132,9 @@ class HasCommands(CallableArgument, Protocol):
         raise NotImplementedError
 
     @property
-    def commands(self) -> Set[CallableArgument]:
+    def commands(self) -> List[CallableArgument]:
         # filter out aliases while retaining the original order
-        return {v for k, v in self.all_commands.items() if k == v.name}
+        return [v for k, v in self.all_commands.items() if k == v.name]
 
     def add_command(self, command: CallableArgument, /) -> None:
         if command.name in self.all_commands.keys():
@@ -189,9 +189,9 @@ class HasOptions(CallableArgument, Protocol):
         raise NotImplementedError
 
     @property
-    def options(self) -> Set[Option]:
+    def options(self) -> List[Option]:
         # filter out aliases while retaining the original order
-        return {v for k, v in self.all_options.items() if k == v.name}
+        return [v for k, v in self.all_options.items() if k == v.name]
 
     def add_option(self, option: Option, /) -> None:
         if option.name in self.all_options.keys():
