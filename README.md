@@ -7,21 +7,40 @@
 
 **ndg.clap** is the command-line argument parser that builds itself.
 
-It is designed to be easy to use by generating most of the boilerplate code
-based on function signatures and documentation (stuff you should already be
+It is designed to be easy to use by generating all of the boilerplate code
+based on function signatures and documentation (things you should already be
 adding to your code anyway).
 
-This is a passion project. It is missing a lot of features that you would
-otherwise get from the built-in `argparse` library, but I plan to add
-everything in on an as-need basis.
+This project is missing a lot of features that you would otherwise get from
+the built-in `argparse` library, but I plan to add everything in eventually.
 
 [Introduction](#introduction) | [Quickstart](#quickstart) | [Getting Started](#getting-started)
 
 <a name="quickstart"></a>
 ## Quickstart
 
-Requires Python 3.9+ and uses
-[NumpPy-style docstrings](https://github.com/numpy/numpydoc)
+<!-- TODO: Make sure this is a valid demonstration of NumPy docs -->
+
+> [!IMPORTANT]
+> Requires Python 3.9+ and uses [NumPy-style docstrings](https://github.com/numpy/numpydoc)
+>
+> ```python
+> def cat(a: str, b: str) -> str:
+>     """Concatenates `a` and `b` together.
+>
+>     Parameters
+>     ----------
+>     a: str
+>         The base string
+>     b: str
+>         The string to add to :param:`a`
+>
+>     Returns
+>     -------
+>     :class:`str` The value of `a` with `b` appended to it
+>     """
+> ```
+
 
 * Available on PyPI as `ndg.clap`. You can install it using PIP:
 
