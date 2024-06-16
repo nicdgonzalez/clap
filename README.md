@@ -39,7 +39,7 @@ we'll be using Script to wrap a single global function and then call it from
 the command line. (If you want to be able to choose from multiple
 functions/methods, you would use Application instead.)
 
-* Start by importing *clap* and instantiating a new `clap.Script` object.
+* Start by importing clap and instantiating a new `clap.Script` object.
 
 ```python
 import clap
@@ -53,11 +53,11 @@ end, so return whatever you'd like!
 
 ```python
 @script.main()
-def fizzbuzz(...) -> None:
+def fizzbuzz(...) -> Any:
     raise NotImplementedError
 ```
 
-* Python 3.9 added a new type to the *typing* module,
+* Python 3.9 added a new type,
 [`typing.Annotated`](https://docs.python.org/3/library/typing.html#typing.Annotated).
 This allows you to add metadata to the parameters in a function's signature.
 Among other things, you can use this to create short options for long options
