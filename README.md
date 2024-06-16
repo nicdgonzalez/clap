@@ -88,7 +88,7 @@ if __name__ == "__main__":
 * and pass `--help` to the script, we might get something like:
 
 ```console
-$ python demo.py --help
+$ python fizzbuzz.py --help
 A simple demo of clap.Script!
 
 USAGE:
