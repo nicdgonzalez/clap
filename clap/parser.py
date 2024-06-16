@@ -10,14 +10,12 @@ from .errors import (
     InvalidOptionError,
     TooManyArgumentsError,
 )
-from .lexer import Lexer, TokenType
+from .lexer import Lexer, Token, TokenType
 
 if TYPE_CHECKING:
     from builtins import dict as Dict
     from builtins import list as List
     from typing import Any, Callable, Optional, Union
-
-    from .lexer import Token
 
 __all__ = ("ParsedArgs", "Parser")
 
@@ -42,11 +40,6 @@ class Parser:
 
     def parse(self) -> ParsedArgs:
         for token in self.lexer:
-            _log.debug(
-                "parsing token: ({}, {!r})".format(
-                    token.token_type, token.value
-                )
-            )
             self.handle_token(token)
 
         self.handle_deferred_tokens()
@@ -112,7 +105,7 @@ class Parser:
         except KeyError:
             raise InvalidOptionError(self.ctx.command, token)
 
-        if value == "":
+        if not value:
             if option.target_type is bool:
                 value = str(not option.default)
             elif (
@@ -147,7 +140,7 @@ class Parser:
             new_token_type = TokenType.LONG
             new_value = "--{}".format(option.name.replace("_", "-"))
 
-            if value is not None:
+            if value:
                 new_value += "={}".format(value)
 
             new_token = Token(new_token_type, new_value)

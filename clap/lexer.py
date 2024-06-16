@@ -90,27 +90,24 @@ class Token:
         if not remainder:
             # This is stdin. There are no flags.
             yield "", ""
-            raise StopIteration
+        else:
+            for index, option in enumerate(remainder):
+                try:
+                    next_char = remainder[index + 1]
+                except IndexError:
+                    next_char = ""
 
-        for index, option in enumerate(remainder):
-            try:
-                next_char = remainder[index + 1]
-            except IndexError:
-                next_char = ""
-
-            if next_char.isnumeric():
-                start_of_number = index + 1
-                yield (option, remainder[start_of_number:])
-                break
-            elif next_char == "=":
-                option, value = remainder[index:].split("=", maxsplit=1)
-                yield (option, value)
-                break
-            else:
-                assert option.isalpha()
-                yield (option, "")
-
-        raise StopIteration
+                if next_char.isnumeric():
+                    start_of_number = index + 1
+                    yield (option, remainder[start_of_number:])
+                    break
+                elif next_char == "=":
+                    option, value = remainder[index:].split("=", maxsplit=1)
+                    yield (option, value)
+                    break
+                else:
+                    assert option.isalpha()
+                    yield (option, "")
 
     def from_argument(self) -> str:
         return self.value[:]

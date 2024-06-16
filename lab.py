@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
-import pprint
 import logging
+import pprint
 import sys
 
 import clap

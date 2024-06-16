@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import importlib
+import logging
 import sys
 from os import path
-from typing import TYPE_CHECKING, Callable, cast
+from typing import TYPE_CHECKING, Callable
 
 from .abc import CallableArgument, HasCommands, HasOptions, HasPositionalArgs
 from .arguments import DEFAULT_HELP
 from .commands import Command, inject_commands_from_members_into_self
 from .help import HelpBuilder, HelpFormatter
 from .parser import Parser
+from .utils import MISSING
 
 if TYPE_CHECKING:
     from builtins import dict as Dict
@@ -26,6 +28,8 @@ __all__ = (
     "Application",
     "Script",
 )
+
+_log = logging.getLogger(__name__)
 
 
 class Extension(HasCommands):
@@ -91,24 +95,25 @@ class ParserBase:
         /,
         *,
         formatter: HelpFormatter = HelpFormatter(),
-    ) -> None:
+    ) -> Any:
         assert type(self) is not ParserBase, "do not use ParserBase directly"
         parser = Parser(args[1:], command=self)  # type: ignore
         ctx = parser.parse()
 
-        # check if the user used the --help option
-        if ctx.kwargs.pop("help", False) is True:
+        if len(args) < 2 or ctx.kwargs.pop("help", False) is True:
             # display the help message
             m = ctx.command.get_help_message(formatter=formatter)
             sys.stdout.write(m)
             return
 
         try:
-            ctx.command(*ctx.args, **ctx.kwargs)
+            return ctx.command(*ctx.args, **ctx.kwargs)
         except TypeError:  # argument-related error
-            raise NotImplementedError
+            m = ctx.command.get_help_message(formatter=formatter)
+            sys.stdout.write(m)
+            return
         except Exception as exc:
-            raise NotImplementedError from exc
+            _log.exception(exc)
 
 
 class Application(ParserBase, HasCommands, HasOptions):
@@ -188,6 +193,7 @@ class Script(ParserBase, HasOptions, HasPositionalArgs):
     def __post_init__(self) -> None:
         self._positionals: List[Positional] = []
         self._options: Dict[str, Option] = {}
+        self._callback: Optional[Callable[..., int]] = None
         self.add_option(DEFAULT_HELP)
 
     @property
@@ -198,12 +204,66 @@ class Script(ParserBase, HasOptions, HasPositionalArgs):
     def all_positionals(self) -> List[Positional]:
         return self._positionals
 
-    def main(self, *args: Any, **kwargs: Any) -> Callable[..., int]:
-        def decorator(fn: Callable[..., int], /) -> int:
-            return cast(int, Command.from_function(fn)(*args, **kwargs))
+    def __call__(self, *args: Any, **kwargs: Any) -> int:
+        if self._callback is None:
+            raise TypeError("`@Script.main()` was never set")
+
+        return self._callback(*args, **kwargs)
+
+    def main(self, **params: Any) -> Callable[..., Callable[..., int]]:
+        def decorator(*args: Any, **kwargs: Any) -> Callable[..., int]:
+            def wrapper(fn: Callable[..., int], /) -> Script:
+                # TODO: move required logic into here instead of creating
+                # a new command object just to steal from it...
+                self._callback = fn
+                c = Command.from_function(fn, **params)
+                attrs = ("_brief", "_description", "_options", "_positionals")
+
+                for key in attrs:
+                    setattr(self, key, getattr(c, key))
+
+                return self
+
+            return wrapper(*args, **kwargs)
 
         return decorator
 
     def get_help_message(self, formatter: HelpFormatter) -> str:
-        # TODO: steal help message from Command
-        raise NotImplementedError
+        builder = (
+            HelpBuilder(formatter=formatter)
+            .add_line(self.brief)
+            .add_section("DESCRIPTION", skip_if_empty=True)
+            .add_section("USAGE")
+            .add_section("OPTIONS", skip_if_empty=True)
+            .add_section("ARGUMENTS", skip_if_empty=True)
+        )
+
+        # description
+        assert (section := builder.get_section("DESCRIPTION")) is not None
+
+        if self.description:
+            section.add_item(name="", brief=self.description)
+
+        # usage
+        usage = self.name
+        options = " | ".join("--{}".format(opt.name) for opt in self.options)
+        usage += " [{}]".format(options)
+
+        for positional in self.all_positionals:
+            fmt = " <{}>" if positional.default is MISSING else " [{}]"
+            usage += fmt.format(positional.name)
+
+        assert (section := builder.get_section("USAGE")) is not None
+        section.add_item(name="", brief=usage)
+
+        # options
+        assert (section := builder.get_section("OPTIONS")) is not None
+        for option in self.options:
+            section.add_item(**option.help_info)
+
+        # arguments
+        assert (section := builder.get_section("ARGUMENTS")) is not None
+        for positional in self.all_positionals:
+            section.add_item(**positional.help_info)
+
+        return builder.build()

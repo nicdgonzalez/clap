@@ -57,8 +57,6 @@ class Positional(ParameterizedArgument):
         self._name = name
         self._brief = brief
 
-        self._target_type = target_type
-
         if default is not MISSING:
             try:
                 valid_default = isinstance(default, target_type)
@@ -68,16 +66,17 @@ class Positional(ParameterizedArgument):
                 assert origin is not None, origin
 
                 if origin is Annotated:
-                    real_type = get_args(target_type)
-                    assert len(real_type) >= 2
-                    origin = real_type[0]
+                    args = get_args(target_type)
+                    assert len(args) >= 2
+                    target_type = args[0]
 
-                valid_default = isinstance(default, origin)
+                valid_default = isinstance(default, target_type)
 
             if not valid_default:
                 e = "default for {!r} must be of type {}, not {}"
                 raise TypeError(e.format(name, target_type, type(default)))
 
+        self._target_type = target_type
         self._default = default
         self._n_args = Range(*sorted(n_args))
 
@@ -191,7 +190,7 @@ class Option(Positional):
 
     @property
     def help_info(self) -> HelpInfo:
-        name = "--{}".format(self.name)
+        name = "--{}".format(self.name.replace("_", "-"))
 
         if self.alias:
             name = "-{}, ".format(self.alias) + name

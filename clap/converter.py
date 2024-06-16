@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from builtins import list as List
 from typing import (
     TYPE_CHECKING,
+    Any,
+    Generic,
     Literal,
     TypeVar,
     Union,
@@ -14,13 +17,15 @@ from .utils import MISSING
 
 if TYPE_CHECKING:
     from builtins import type as Type
-    from typing import Any, Optional
+    from typing import Optional
 
     T = TypeVar("T")
 
 
 def is_generic_type(cls: Type[Any], /) -> bool:
-    raise NotImplementedError
+    return (
+        isinstance(cls, type) and issubclass(cls, Generic[Any])
+    ) or isinstance(cls, type(List[Any]))
 
 
 def convert_to_bool(argument: str, /) -> bool:
