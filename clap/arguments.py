@@ -60,8 +60,7 @@ class Positional(ParameterizedArgument):
         if default is not MISSING:
             try:
                 valid_default = isinstance(default, target_type)
-            except TypeError:
-                # Generic in second argument to isinstance()
+            except TypeError:  # Generic in second argument to isinstance()
                 origin = get_origin(target_type)
                 assert origin is not None, origin
 
@@ -89,7 +88,7 @@ class Positional(ParameterizedArgument):
         target_type: Type[Any],
     ) -> Self:
         kwargs: Dict[str, Any] = {
-            "name": parameter.name,
+            "name": parameter.name.replace("_", "-"),
             "brief": brief,
             "target_type": target_type,
             "default": (
@@ -132,7 +131,7 @@ class Positional(ParameterizedArgument):
 
         if self.default is not MISSING:
             if self.target_type not in (bool,):
-                brief += " [{}]".format(self.default)
+                brief += " [default: {!r}]".format(self.default)
             else:
                 pass
         else:
@@ -150,12 +149,18 @@ class Option(Positional):
         *,
         target_type: Type[T],
         default: T = MISSING,
-        n_args: Tuple[int, int] = (0, 1),
+        n_args: Tuple[int, int] = (-1, -1),
         alias: str = "",
         requires: Optional[Set[str]] = None,
         conflicts: Optional[Set[str]] = None,
         **kwargs: Any,
     ) -> None:
+        if n_args == (-1, -1):
+            if target_type is bool:
+                n_args = (0, 0)
+            else:
+                n_args = (0, 1)
+
         super().__init__(
             name=name,
             brief=brief,

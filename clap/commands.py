@@ -249,9 +249,11 @@ class Command(HasOptions, HasPositionalArgs):
         options = " | ".join("--{}".format(opt.name) for opt in self.options)
         usage += " [{}]".format(options)
 
-        for positional in self.all_positionals:
-            fmt = " <{}>" if positional.default is MISSING else " [{}]"
-            usage += fmt.format(positional.name)
+        for p in self.all_positionals:
+            if p.default is MISSING:
+                usage += " <{}>".format(p.name)
+            else:
+                usage += " [{}={!r}]".format(p.name, p.default)
 
         assert (section := builder.get_section("USAGE")) is not None
         section.add_item(name="", brief=usage)

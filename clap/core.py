@@ -100,7 +100,7 @@ class ParserBase:
         parser = Parser(args[1:], command=self)  # type: ignore
         ctx = parser.parse()
 
-        if len(args) < 2 or ctx.kwargs.pop("help", False) is True:
+        if ctx.kwargs.pop("help", False) is True:
             # display the help message
             m = ctx.command.get_help_message(formatter=formatter)
             sys.stdout.write(m)
@@ -210,9 +210,9 @@ class Script(ParserBase, HasOptions, HasPositionalArgs):
 
         return self._callback(*args, **kwargs)
 
-    def main(self, **params: Any) -> Callable[..., Callable[..., int]]:
-        def decorator(*args: Any, **kwargs: Any) -> Callable[..., int]:
-            def wrapper(fn: Callable[..., int], /) -> Script:
+    def main(self, **params: Any) -> Callable[..., Callable[..., Any]]:
+        def decorator(*args: Any, **kwargs: Any) -> Callable[..., Any]:
+            def wrapper(fn: Callable[..., Any], /) -> Script:
                 # TODO: move required logic into here instead of creating
                 # a new command object just to steal from it...
                 self._callback = fn
@@ -220,6 +220,11 @@ class Script(ParserBase, HasOptions, HasPositionalArgs):
                 attrs = ("_brief", "_description", "_options", "_positionals")
 
                 for key in attrs:
+                    if not (v := getattr(c, key)) and isinstance(v, str):
+                        # if user sets brief or description in __init__,
+                        # do not override if empty in the function signature
+                        continue
+
                     setattr(self, key, getattr(c, key))
 
                 return self
@@ -249,9 +254,11 @@ class Script(ParserBase, HasOptions, HasPositionalArgs):
         options = " | ".join("--{}".format(opt.name) for opt in self.options)
         usage += " [{}]".format(options)
 
-        for positional in self.all_positionals:
-            fmt = " <{}>" if positional.default is MISSING else " [{}]"
-            usage += fmt.format(positional.name)
+        for p in self.all_positionals:
+            if p.default is MISSING:
+                usage += " <{}>".format(p.name)
+            else:
+                usage += " [{}={!r}]".format(p.name, p.default)
 
         assert (section := builder.get_section("USAGE")) is not None
         section.add_item(name="", brief=usage)

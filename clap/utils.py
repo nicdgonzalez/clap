@@ -16,7 +16,7 @@ PARAMETERS_SECTION_REGEX = re.compile(
     SECTION_REGEX_FMT.format(name="Parameters"), re.DOTALL
 )
 OTHER_PARAMETERS_SECTION_REGEX = re.compile(
-    SECTION_REGEX_FMT.format(name="Parameters"), re.DOTALL
+    SECTION_REGEX_FMT.format(name="Other Parameters"), re.DOTALL
 )
 PARAMETER_DESCRIPTION_REGEX = re.compile(
     r"(?P<name>\S+)\s*:.*?\n(?P<description>.*?)(?=\S+\s*:|\Z)", re.DOTALL

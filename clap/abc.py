@@ -120,6 +120,14 @@ class ParameterizedArgument(Argument, Protocol):
     def n_args(self) -> Range:
         raise NotImplementedError
 
+    @property
+    def snake_case(self) -> str:
+        return self.name.replace("-", "_")
+
+    @property
+    def kebab_case(self) -> str:
+        return self.name.replace("_", "-")
+
     def convert(self, value: str, /) -> Any:
         return convert(value, self.target_type, default=self.default)
 

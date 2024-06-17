@@ -17,6 +17,8 @@ if TYPE_CHECKING:
     from builtins import list as List
     from typing import Any, Callable, Optional, Union
 
+    from .arguments import Option
+
 __all__ = ("ParsedArgs", "Parser")
 
 _log = logging.getLogger(__name__)
@@ -101,27 +103,27 @@ class Parser:
         flag, value = token.from_long_option()
 
         try:
-            option = self.ctx.command.all_options[token.snake_case]
+            option: Option = self.ctx.command.all_options[flag]
         except KeyError:
             raise InvalidOptionError(self.ctx.command, token)
 
         if not value:
-            if option.target_type is bool:
-                value = str(not option.default)
-            elif (
+            if (
                 next_token is not None
                 and next_token.is_argument
                 and option.n_args.maximum > 0
             ):
                 value = next_token.from_argument()
                 _ = self.deferred.pop(0)
+            elif option.target_type is bool:
+                value = str(not option.default)
             else:
                 pass  # value stays an empty string
 
         _log.debug("flag: {}, value: {}".format(flag, value))
 
         converted_value = option.convert(value)
-        self.ctx.kwargs[option.name] = converted_value
+        self.ctx.kwargs[option.snake_case] = converted_value
 
     def handle_token_short(
         self,
@@ -133,12 +135,12 @@ class Parser:
 
         for flag, value in token.from_short_option():
             try:
-                option = self.ctx.command.all_options[flag]
+                option: Option = self.ctx.command.all_options[flag]
             except KeyError:
                 raise InvalidOptionError(self.ctx.command, token)
 
             new_token_type = TokenType.LONG
-            new_value = "--{}".format(option.name.replace("_", "-"))
+            new_value = "--{}".format(option.kebab_case)
 
             if value:
                 new_value += "={}".format(value)
