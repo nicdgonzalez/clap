@@ -18,7 +18,7 @@ def fizzbuzz(
     *,
     # keyword-only arguments are converted into Options
     min: int = 1,
-    max: int = 100,
+    max: int = 15,
     skip_empty: Annotated[bool, clap.Alias("s")] = False,
 ) -> None:
     """A simple FizzBuzz implementation to demo `clap.Script`!
