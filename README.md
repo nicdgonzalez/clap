@@ -12,9 +12,20 @@ based on function signatures and documentation (things you should already be
 adding to your code anyway).
 
 This project is missing a lot of features that you would otherwise get from
-the built-in `argparse` library, but I plan to add everything in eventually.
+the built-in `argparse` library, though I plan to add everything in eventually.
 
-[Introduction](#introduction) | [Quickstart](#quickstart) | [Getting Started](#getting-started)
+[Introduction](#introduction) | [Installation](#installation) | [Quickstart](#quickstart)
+
+<a name="installation"></a>
+## Installation
+
+**Python 3.9 or higher is required.**
+
+To install the library, run the following command:
+
+```bash
+python -m pip install ndg.clap
+```
 
 <a name="quickstart"></a>
 ## Quickstart
@@ -23,86 +34,38 @@ the built-in `argparse` library, but I plan to add everything in eventually.
 > This library currently only supports parsing through
 > [NumPy-style docstrings](https://github.com/numpy/numpydoc).
 
-*Requires Python 3.9+*
+### Script
 
-* Available on PyPI as `ndg.clap`. You can install it using PIP:
-
-```bash
-python -m pip install ndg.clap
-```
-
-For an example project, see [Fuji](https://github.com/nicdgonzalez/fuji).
-
-<a name="getting-started"></a>
-## Getting Started
-
-ndg.clap has (2) interfaces: **Application** and **Script**. For this demo,
-we'll be using Script to wrap a single global function and then call it from
-the command line. (If you want to be able to choose from multiple
-functions/methods, you would use Application instead.)
-
-* Start by importing clap and instantiating a new `clap.Script` object.
-
-```python
-import clap
-
-script = clap.Script(brief="A simple demo of clap.Script!")
-```
-
-* To mark the *main* function of the script, use the `@script.main()`
-decorator. The result of the main function will be retrievable at the
-end, so return whatever you'd like!
-
-```python
-@script.main()
-def fizzbuzz(...) -> Any:
-    raise NotImplementedError
-```
-
-* Python 3.9 added a new type,
-[`typing.Annotated`](https://docs.python.org/3/library/typing.html#typing.Annotated).
-This allows you to add metadata to the parameters in a function's signature.
-Among other things, you can use this to create short options for long options
-(e.g. `-h` for `--help`, `-V` for `--version`, etc).
-
-```python
-from typing import Annotated
-...
-@script.main()
-def fizzbuzz(
-    # positional arguments are converted into positionals
-    min: int = 1,
-    max: int = 100,
-    *,
-    # keyword-only arguments are converted into options
-    skip_empty: Annotated[bool, clap.Alias("s")] = False,
-) -> None:
-    raise NotImplementedError
-```
-
-* If we add the following to the bottom of the file,
-
-```python
-if __name__ == "__main__":
-    _ = script.parse_args()  # defaults to sys.argv
-```
-
-* and pass `--help` to the script, we might get something like:
+See the [examples/fizzbuzz.py](./examples/fizzbuzz.py) for the code.
 
 ```console
-$ python fizzbuzz.py --help
-A simple demo of clap.Script!
+$ python ./examples/fizzbuzz.py --help
+A simple FizzBuzz implementation to demo `clap.Script`!
+
+DESCRIPTION:
+  FizzBuzz is a simple programming task where you iterate over a range of values
+  and print either "Fizz" or "Buzz" when the index is divisible by `3` or `5`
+  (respectively). If the index is divisible by both values, print both (i.e.
+  "FizzBuzz").
 
 USAGE:
-  fizzbuzz.py [--help | --skip-empty] [min] [max]
+  fizzbuzz.py [--help | --min | --max | --skip-empty]
 
 OPTIONS:
   -h, --help        Shows this help message and exits
-  -s, --skip-empty
-
-ARGUMENTS:
-  min   [default: 1]
-  max   [default: 100]
+  --min             The index to start from [default: 1]
+  --max             The index to stop at (inclusive) [default: 100]
+  -s, --skip-empty  Whether to skip indexes that don't print anything
 ```
 
-WORK IN PROGRESS......
+### Application
+
+See the [examples/demo](./examples/demo) directory for the code of this simplified
+example, or check out [Fuji](https://github.com/nicdgonzalez/fuji) for a full-fledged
+project!
+
+```console
+$ cd ./examples/demo
+$ python -m task_app --help
+[WORK IN PROGRESS]
+```
