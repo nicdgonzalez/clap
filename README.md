@@ -19,29 +19,9 @@ the built-in `argparse` library, but I plan to add everything in eventually.
 <a name="quickstart"></a>
 ## Quickstart
 
-<!-- TODO: Make sure this is a valid demonstration of NumPy docs -->
-
 > [!NOTE]
-> This library currently only accepts the use of
-> [NumPy-style docstrings](https://github.com/numpy/numpydoc)
->
-> ```python
-> def cat(a: str, b: str) -> str:
->     """Concatenates `a` and `b` together.
->
->     Parameters
->     ----------
->     a : str
->         The base string
->     b : str
->         The string to add to `a`
->
->     Returns
->     -------
->     str:
->         The value of `a` with `b` appended to it
->     """
-> ```
+> This library currently only supports parsing through
+> [NumPy-style docstrings](https://github.com/numpy/numpydoc).
 
 *Requires Python 3.9+*
 
