@@ -31,7 +31,7 @@ def fizzbuzz(
     Parameters
     ----------
     min : int
-        The index to start from
+        The index to start from (inclusive)
     max : int
         The index to stop at (inclusive)
 
