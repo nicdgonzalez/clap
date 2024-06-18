@@ -38,12 +38,10 @@ python -m pip install ndg.clap
 
 <!-- See [examples/fizzbuzz.py](./examples/fizzbuzz.py) for the code. -->
 
-Copy the following code into your own file, then run it using
-the `--help` flag!
+Copy the following code into your own file, then try running it with
+the `--help` option!
 
 ```python
-#!/usr/bin/python
-
 from typing import Annotated
 
 import clap
