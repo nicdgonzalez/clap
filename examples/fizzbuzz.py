@@ -4,15 +4,8 @@ from typing import Annotated
 
 import clap
 
-script = clap.Script(
-    # name=...,        # defaults to the filename
-    # brief="",        # same as first line of docstring
-    # description="",  # same as first paragraph of docstring
-    # epilog=...,      # text to display at the end of the help message
-)
 
-
-@script.main()
+@clap.Script.from_main
 def fizzbuzz(
     # positional arguments are converted into Positionals
     *,
@@ -69,7 +62,8 @@ if __name__ == "__main__":
         # placeholder="[...]",  # displays if name is longer than name_width
         # compact=False,        # flattens unnecessary newlines
     )
-    script.parse_args(
+    _ = clap.parse_args(
+        fizzbuzz,
         # args=[...],  # defaults to sys.argv
         formatter=formatter,
     )

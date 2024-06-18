@@ -1,22 +1,23 @@
 from __future__ import annotations
 
+import inspect
 import importlib
 import logging
 import sys
 from os import path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Protocol
 
 from .abc import CallableArgument, HasCommands, HasOptions, HasPositionalArgs
 from .arguments import DEFAULT_HELP
-from .commands import Command, inject_commands_from_members_into_self
+from .commands import Command, inject_commands_from_members_into_self, convert_function_parameters
 from .help import HelpBuilder, HelpFormatter
 from .parser import Parser
-from .utils import MISSING
+from .utils import MISSING, parse_docstring
 
 if TYPE_CHECKING:
     from builtins import dict as Dict
     from builtins import list as List
-    from typing import Any, Optional
+    from typing import Any, Optional, Callable, Union
 
     from typing_extensions import Self
 
@@ -27,9 +28,35 @@ __all__ = (
     "Extension",
     "Application",
     "Script",
+    "parse_args",
 )
 
 _log = logging.getLogger(__name__)
+
+
+def parse_args(
+    interface: Union[Application, Script],
+    args: List[str] = sys.argv,
+    *,
+    formatter: HelpFormatter = HelpFormatter(),
+) -> Any:
+    parser = Parser(args[1:], command=interface)  # type: ignore
+    ctx = parser.parse()
+
+    if ctx.kwargs.pop("help", False) is True:
+        # display the help message
+        m = ctx.command.get_help_message(formatter=formatter)
+        sys.stdout.write(m)
+        return
+
+    try:
+        return ctx.command(*ctx.args, **ctx.kwargs)
+    except TypeError:  # argument-related error
+        m = ctx.command.get_help_message(formatter=formatter)
+        sys.stdout.write(m)
+        return
+    except Exception as exc:
+        _log.exception(exc)
 
 
 class Extension(HasCommands):
@@ -54,7 +81,7 @@ class Extension(HasCommands):
         return self._name
 
 
-class ParserBase:
+class Application(HasCommands, HasOptions):
 
     def __init__(
         self,
@@ -68,10 +95,10 @@ class ParserBase:
         self._brief = brief
         self._description = description
         self._epilog = epilog
-        self.__post_init__()
-
-    def __post_init__(self) -> None:
-        return
+        self._commands: Dict[str, CallableArgument] = {}
+        self._options: Dict[str, Option] = {}
+        self.add_option(DEFAULT_HELP)
+        inject_commands_from_members_into_self(self)
 
     @property
     def name(self) -> str:
@@ -88,41 +115,6 @@ class ParserBase:
     @property
     def epilog(self) -> str:
         return self._epilog
-
-    def parse_args(
-        self,
-        args: List[str] = sys.argv,
-        /,
-        *,
-        formatter: HelpFormatter = HelpFormatter(),
-    ) -> Any:
-        assert type(self) is not ParserBase, "do not use ParserBase directly"
-        parser = Parser(args[1:], command=self)  # type: ignore
-        ctx = parser.parse()
-
-        if ctx.kwargs.pop("help", False) is True:
-            # display the help message
-            m = ctx.command.get_help_message(formatter=formatter)
-            sys.stdout.write(m)
-            return
-
-        try:
-            return ctx.command(*ctx.args, **ctx.kwargs)
-        except TypeError:  # argument-related error
-            m = ctx.command.get_help_message(formatter=formatter)
-            sys.stdout.write(m)
-            return
-        except Exception as exc:
-            _log.exception(exc)
-
-
-class Application(ParserBase, HasCommands, HasOptions):
-
-    def __post_init__(self) -> None:
-        self._commands: Dict[str, CallableArgument] = {}
-        self._options: Dict[str, Option] = {}
-        self.add_option(DEFAULT_HELP)
-        inject_commands_from_members_into_self(self)
 
     @property
     def all_commands(self) -> Dict[str, CallableArgument]:
@@ -188,13 +180,63 @@ class Application(ParserBase, HasCommands, HasOptions):
         return builder.build()
 
 
-class Script(ParserBase, HasOptions, HasPositionalArgs):
+class Script(HasOptions, HasPositionalArgs):
 
-    def __post_init__(self) -> None:
-        self._positionals: List[Positional] = []
-        self._options: Dict[str, Option] = {}
-        self._callback: Optional[Callable[..., int]] = None
+    def __init__(
+        self,
+        callback: Callable[..., Any],
+        /,
+        name: str,
+        brief: str,
+        description: str,
+        options: Dict[str, Option],
+        positionals: List[Positional],
+        epilog: str = "Built using ndg.clap!",
+    ) -> None:
+        self._callback = callback
+        self._name = name
+        self._brief = brief
+        self._description = description
+        self._options = options
+        self._positionals = positionals
+        self._epilog = epilog
         self.add_option(DEFAULT_HELP)
+
+    @classmethod
+    def from_main(cls, callback: Callable[..., Any], /, **kwargs: Any) -> Self:
+        kwargs.setdefault("name", path.basename(sys.argv[0]))
+        parsed_docs = parse_docstring(inspect.getdoc(callback) or "")
+        kwargs.setdefault("brief", parsed_docs.pop("__brief__", ""))
+        kwargs.setdefault("description", parsed_docs.pop("__desc__", ""))
+        kwargs.setdefault("options", {})
+        kwargs.setdefault("positionals", [])
+
+        this = cls(callback, **kwargs)
+        data = convert_function_parameters(callback, param_docs=parsed_docs)
+
+        for option in data.options:
+            this.add_option(option)
+
+        for positional in data.positionals:
+            this.add_positional(positional)
+
+        return this
+
+    @property
+    def callback(self) -> Callable[..., Any]:
+        return self._callback
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def brief(self) -> str:
+        return self._brief
+
+    @property
+    def description(self) -> str:
+        return self._description
 
     @property
     def all_options(self) -> Dict[str, Option]:
@@ -204,34 +246,12 @@ class Script(ParserBase, HasOptions, HasPositionalArgs):
     def all_positionals(self) -> List[Positional]:
         return self._positionals
 
+    @property
+    def epilog(self) -> str:
+        return self._epilog
+
     def __call__(self, *args: Any, **kwargs: Any) -> int:
-        if self._callback is None:
-            raise TypeError("`@Script.main()` was never set")
-
         return self._callback(*args, **kwargs)
-
-    def main(self, **params: Any) -> Callable[..., Callable[..., Any]]:
-        def decorator(*args: Any, **kwargs: Any) -> Callable[..., Any]:
-            def wrapper(fn: Callable[..., Any], /) -> Script:
-                # TODO: move required logic into here instead of creating
-                # a new command object just to steal from it...
-                self._callback = fn
-                c = Command.from_function(fn, **params)
-                attrs = ("_brief", "_description", "_options", "_positionals")
-
-                for key in attrs:
-                    if not (v := getattr(c, key)) and isinstance(v, str):
-                        # if user sets brief or description in __init__,
-                        # do not override if empty in the function signature
-                        continue
-
-                    setattr(self, key, getattr(c, key))
-
-                return self
-
-            return wrapper(*args, **kwargs)
-
-        return decorator
 
     def get_help_message(self, formatter: HelpFormatter) -> str:
         builder = (

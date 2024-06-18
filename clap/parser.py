@@ -33,9 +33,7 @@ class ParsedArgs:
 
 class Parser:
 
-    def __init__(
-        self, args: List[str], /, command: Union[HasCommands, CallableArgument]
-    ) -> None:
+    def __init__(self, args: List[str], /, command: CallableArgument) -> None:
         self.lexer = Lexer(args[:])
         self.deferred: List[Token] = []
         self.ctx = ParsedArgs(command=command)

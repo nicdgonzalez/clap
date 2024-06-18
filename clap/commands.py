@@ -212,17 +212,9 @@ class Command(HasOptions, HasPositionalArgs):
 
     @parent.setter
     def parent(self, value: HasCommands) -> None:
-        if not isinstance(value, HasCommands):
-            raise TypeError("value does not satisfy the HasCommands protocol")
-
         self._parent = value
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        _log.debug(
-            "passing args to command {!r}: (args: {}, kwargs: {})".format(
-                self.name, args, kwargs
-            )
-        )
         if hasattr(self.callback, "__self__"):
             return self.callback(self.callback.__self__, *args, **kwargs)
         else:
@@ -234,6 +226,7 @@ class Command(HasOptions, HasPositionalArgs):
             .add_line(self.brief)
             .add_section("DESCRIPTION", skip_if_empty=True)
             .add_section("USAGE")
+            .add_section("ALIASES", skip_if_empty=True)
             .add_section("OPTIONS", skip_if_empty=True)
             .add_section("ARGUMENTS", skip_if_empty=True)
         )
@@ -257,6 +250,10 @@ class Command(HasOptions, HasPositionalArgs):
 
         assert (section := builder.get_section("USAGE")) is not None
         section.add_item(name="", brief=usage)
+
+        # aliases
+        assert (section := builder.get_section("ALIASES")) is not None
+        section.add_item(name="", brief=", ".join(self.aliases))
 
         # options
         assert (section := builder.get_section("OPTIONS")) is not None
