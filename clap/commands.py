@@ -253,7 +253,8 @@ class Command(HasOptions, HasPositionalArgs):
 
         # aliases
         assert (section := builder.get_section("ALIASES")) is not None
-        section.add_item(name="", brief=", ".join(self.aliases))
+        if self.aliases:
+            section.add_item(name="", brief=", ".join(self.aliases))
 
         # options
         assert (section := builder.get_section("OPTIONS")) is not None
