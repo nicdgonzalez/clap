@@ -31,8 +31,8 @@ python -m pip install ndg.clap
 ## Quickstart
 
 > [!NOTE]
-> This library currently only supports parsing through
-> [NumPy-style docstrings](https://github.com/numpy/numpydoc).
+> This library currently only supports parsing through docstrings that
+> follow the [NumPy documentation format](https://github.com/numpy/numpydoc).
 
 ### Script
 
