@@ -1,0 +1,4 @@
+[submodule "examples/fuji"]
+	path = examples/fuji
+	url = https://github.com/nicdgonzalez/fuji
+	branch = dev
