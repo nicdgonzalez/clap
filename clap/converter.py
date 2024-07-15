@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from builtins import list as List
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -8,7 +7,6 @@ from typing import (
     Literal,
     TypeVar,
     Union,
-    cast,
     get_args,
     get_origin,
 )
@@ -16,16 +14,17 @@ from typing import (
 from .utils import MISSING
 
 if TYPE_CHECKING:
-    from builtins import type as Type
     from typing import Optional
 
     T = TypeVar("T")
 
 
-def is_generic_type(cls: Type[Any], /) -> bool:
+def is_generic_type(cls: type[Any], /) -> bool:
     return (
-        isinstance(cls, type) and issubclass(cls, Generic[Any])
-    ) or isinstance(cls, type(List[Any]))
+        isinstance(cls, type)
+        and issubclass(cls, Generic)  # type: ignore  # Works fine at runtime
+        or isinstance(cls, type(list[Any]))
+    )
 
 
 def convert_to_bool(argument: str, /) -> bool:
@@ -37,7 +36,7 @@ def convert_to_bool(argument: str, /) -> bool:
         raise ValueError("unable to convert {!r} to bool".format(argument))
 
 
-def actual_conversion(argument: str, converter: Type[Any]) -> Optional[Any]:
+def actual_conversion(argument: str, converter: type[Any]) -> Optional[Any]:
     if converter is bool:
         return convert_to_bool(argument)
 
@@ -56,18 +55,46 @@ def actual_conversion(argument: str, converter: Type[Any]) -> Optional[Any]:
 
 def convert(
     argument: str,
-    converter: Type[Any],
+    converter: type[Any],
     /,
     default: T = MISSING,
 ) -> Optional[Any]:
-    # TODO: finish converter logic
     origin = get_origin(converter)
 
     if origin is Union:
-        # union_args = get_args(converter)
-        raise NotImplementedError
+        errors: list[Exception] = []
+        union_args = get_args(converter)
+
+        for arg in union_args:
+            if arg is None:
+                return None if default is MISSING else default
+
+            try:
+                value = convert(argument, arg, default)
+            except Exception as exc:
+                errors.append(exc)
+            else:
+                return value
+
+        raise ValueError(
+            "unable to convert {!r} to one of {!r}: {}".format(
+                argument, union_args, errors
+            )
+        )
     elif origin is Literal:
-        raise NotImplementedError
+        valid_literals = get_args(converter)
+
+        for literal in valid_literals:
+            literal_type = type(literal)
+
+            try:
+                value = convert(argument, literal_type, default)
+            except Exception:
+                continue
+
+            if value == literal:
+                return value
+
     elif origin is not None and is_generic_type(converter):
         converter = origin
 

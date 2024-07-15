@@ -1,23 +1,26 @@
 from __future__ import annotations
 
-import inspect
 import importlib
+import inspect
 import logging
 import sys
 from os import path
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Optional, cast
 
 from .abc import CallableArgument, HasCommands, HasOptions, HasPositionalArgs
 from .arguments import DEFAULT_HELP
-from .commands import Command, inject_commands_from_members_into_self, convert_function_parameters
+from .commands import (
+    Command,
+    Group,
+    convert_function_parameters,
+    inject_commands_from_members_into_self,
+)
 from .help import HelpBuilder, HelpFormatter
 from .parser import Parser
 from .utils import MISSING, parse_docstring
 
 if TYPE_CHECKING:
-    from builtins import dict as Dict
-    from builtins import list as List
-    from typing import Any, Optional, Callable, Union
+    from typing import Any, Callable, Self, Union
 
     from typing_extensions import Self
 
@@ -29,6 +32,7 @@ __all__ = (
     "Application",
     "Script",
     "parse_args",
+    "script",
 )
 
 _log = logging.getLogger(__name__)
@@ -36,11 +40,11 @@ _log = logging.getLogger(__name__)
 
 def parse_args(
     interface: Union[Application, Script],
-    args: List[str] = sys.argv,
+    args: list[str] = sys.argv,
     *,
     formatter: HelpFormatter = HelpFormatter(),
 ) -> Any:
-    parser = Parser(args[1:], command=interface)  # type: ignore
+    parser = Parser(args[1:], command=interface)
     ctx = parser.parse()
 
     if ctx.kwargs.pop("help", False) is True:
@@ -63,7 +67,7 @@ class Extension(HasCommands):
 
     if TYPE_CHECKING:
         _name: str
-        _commands: Dict[str, CallableArgument]
+        _commands: dict[str, HasCommands | CallableArgument]
 
     def __new__(cls, *args: Any, **kwargs: Any) -> Self:
         this = super().__new__(cls)
@@ -73,7 +77,7 @@ class Extension(HasCommands):
         return this
 
     @property
-    def all_commands(self) -> Dict[str, CallableArgument]:
+    def all_commands(self) -> dict[str, HasCommands | CallableArgument]:
         return self._commands
 
     @property
@@ -95,10 +99,20 @@ class Application(HasCommands, HasOptions):
         self._brief = brief
         self._description = description
         self._epilog = epilog
-        self._commands: Dict[str, CallableArgument] = {}
-        self._options: Dict[str, Option] = {}
+        self._commands: dict[str, HasCommands | CallableArgument] = {}
+        self._options: dict[str, Option] = {}
+        self._parent = cast(Optional[HasCommands], None)
         self.add_option(DEFAULT_HELP)
         inject_commands_from_members_into_self(self)
+
+        self.__post_init__()
+
+    def __post_init__(self) -> None:
+        return
+
+    def __call__(self, *args: Any, **kwargs: Any) -> None:
+        message = self.get_help_message(HelpFormatter())
+        sys.stdout.write(message)
 
     @property
     def name(self) -> str:
@@ -117,12 +131,20 @@ class Application(HasCommands, HasOptions):
         return self._epilog
 
     @property
-    def all_commands(self) -> Dict[str, CallableArgument]:
+    def all_commands(self) -> dict[str, HasCommands | CallableArgument]:
         return self._commands
 
     @property
-    def all_options(self) -> Dict[str, Option]:
+    def all_options(self) -> dict[str, Option]:
         return self._options
+
+    @property
+    def parent(self) -> Optional[HasCommands]:
+        return self._parent
+
+    @parent.setter
+    def parent(self, value: Optional[HasCommands]) -> None:
+        self._parent = value
 
     def extend(self, name: str, package: Optional[str] = None) -> None:
         module = importlib.import_module(name, package=package)
@@ -138,6 +160,26 @@ class Application(HasCommands, HasOptions):
     def add_extension(self, extension: Extension, /) -> None:
         for command in extension.commands:
             self.add_command(command)
+
+    def command(self, *args: Any, **kwargs: Any) -> Callable[..., Command]:
+        def decorator(callback: Callable[..., Any], /) -> Command:
+            kwargs.setdefault("parent", self)
+            c = Command.from_function(callback, *args, **kwargs)
+            self.add_command(c)
+
+            return c
+
+        return decorator
+
+    def group(self, *args: Any, **kwargs: Any) -> Callable[..., Group]:
+        def decorator(callback: Callable[..., Any], /) -> Group:
+            kwargs.setdefault("parent", self)
+            g = Group.from_function(callback, *args, **kwargs)
+            self.add_command(g)
+
+            return g
+
+        return decorator
 
     def get_help_message(self, formatter: HelpFormatter) -> str:
         builder = (
@@ -189,8 +231,8 @@ class Script(HasOptions, HasPositionalArgs):
         name: str,
         brief: str,
         description: str,
-        options: Dict[str, Option],
-        positionals: List[Positional],
+        options: dict[str, Option],
+        positionals: list[Positional],
         epilog: str = "Built using ndg.clap!",
     ) -> None:
         self._callback = callback
@@ -203,7 +245,9 @@ class Script(HasOptions, HasPositionalArgs):
         self.add_option(DEFAULT_HELP)
 
     @classmethod
-    def from_main(cls, callback: Callable[..., Any], /, **kwargs: Any) -> Self:
+    def from_function(
+        cls, callback: Callable[..., Any], /, **kwargs: Any
+    ) -> Self:
         kwargs.setdefault("name", path.basename(sys.argv[0]))
         parsed_docs = parse_docstring(inspect.getdoc(callback) or "")
         kwargs.setdefault("brief", parsed_docs.pop("__brief__", ""))
@@ -239,18 +283,18 @@ class Script(HasOptions, HasPositionalArgs):
         return self._description
 
     @property
-    def all_options(self) -> Dict[str, Option]:
+    def all_options(self) -> dict[str, Option]:
         return self._options
 
     @property
-    def all_positionals(self) -> List[Positional]:
+    def all_positionals(self) -> list[Positional]:
         return self._positionals
 
     @property
     def epilog(self) -> str:
         return self._epilog
 
-    def __call__(self, *args: Any, **kwargs: Any) -> int:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         return self._callback(*args, **kwargs)
 
     def get_help_message(self, formatter: HelpFormatter) -> str:
@@ -294,3 +338,10 @@ class Script(HasOptions, HasPositionalArgs):
             section.add_item(**positional.help_info)
 
         return builder.build()
+
+
+def script(*args: Any, **kwargs: Any) -> Callable[..., Script]:
+    def decorator(callback: Callable[..., Any], /) -> Script:
+        return Script.from_function(callback, *args, **kwargs)
+
+    return decorator

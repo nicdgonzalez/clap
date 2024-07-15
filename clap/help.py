@@ -8,8 +8,6 @@ import textwrap
 from typing import TYPE_CHECKING, NamedTuple, NewType, TypedDict
 
 if TYPE_CHECKING:
-    from builtins import dict as Dict
-    from builtins import list as List
     from typing import Any, Iterator, Optional
 
     from typing_extensions import Self
@@ -29,7 +27,7 @@ SectionMarker = NewType("SectionMarker", str)
 class Section:
     name: str
     brief: str = ""
-    children: List[SectionItem] = dataclasses.field(default_factory=list)
+    children: list[SectionItem] = dataclasses.field(default_factory=list)
     placeholder: Optional[str] = None
     skip_if_empty: bool = False
 
@@ -46,7 +44,7 @@ class Section:
 
 @dataclasses.dataclass
 class TreeData:
-    data: Dict[str, Section] = dataclasses.field(default_factory=dict)
+    data: dict[str, Section] = dataclasses.field(default_factory=dict)
     message: str = ""
 
     def __iter__(self) -> Iterator[Section]:
@@ -109,7 +107,7 @@ class HelpBuilder:
         self._indent = value
 
     def build(self) -> str:
-        message_map: Dict[str, str] = {}
+        message_map: dict[str, str] = {}
 
         for section in self._tree:
             message = self._format_section(section)

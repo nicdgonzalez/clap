@@ -1,26 +1,24 @@
 from __future__ import annotations
 
 import enum
-import logging
+from collections.abc import Generator
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from builtins import list as List
-    from builtins import tuple as Tuple
-    from typing import Iterator, Optional
-
-_log = logging.getLogger(__name__)
+    from typing import Iterator
 
 
 class TokenType(enum.IntEnum):
+    PROGRAM = 1
+    ARGUMENT = enum.auto()
     LONG = enum.auto()
     SHORT = enum.auto()
-    ARGUMENT = enum.auto()
     ESCAPE = enum.auto()
     STDIN = enum.auto()
 
 
 class Token:
+
     def __init__(self, token_type: TokenType, value: str) -> None:
         self._token_type = token_type
         self._value = value
@@ -73,7 +71,7 @@ class Token:
     def is_argument(self) -> bool:
         return self.token_type == TokenType.ARGUMENT
 
-    def from_long_option(self) -> Tuple[str, str]:
+    def from_long_option(self) -> tuple[str, str]:
         # 2 is the length of the leading '--'.
         remainder = self.value[2:] if self.is_long_option else self.value[:]
 
@@ -83,14 +81,11 @@ class Token:
 
         return remainder, ""
 
-    def from_short_option(self) -> Iterator[Tuple[str, str]]:
+    def from_short_option(self) -> Generator[tuple[str, str], None, None]:
         # 1 is the length of the leading '-'.
         remainder = self.value[1:] if self.is_short_option else self.value[:]
 
-        if not remainder:
-            # This is stdin. There are no flags.
-            yield "", ""
-        else:
+        if remainder:
             for index, option in enumerate(remainder):
                 try:
                     next_char = remainder[index + 1]
@@ -108,106 +103,58 @@ class Token:
                 else:
                     assert option.isalpha()
                     yield (option, "")
+        else:
+            # This is stdin. There are no flags.
+            yield "", ""
 
     def from_argument(self) -> str:
         return self.value[:]
 
 
-class Cursor:
-    def __init__(self, begin: int = 0, *, end: int) -> None:
-        self._begin = begin
-        self._end = end
-        self._position = begin
+class Lexer:
 
-    @property
-    def begin(self) -> int:
-        return self._begin
-
-    @property
-    def end(self) -> int:
-        return self._end
-
-    @property
-    def position(self) -> int:
-        return self._position
-
-    @position.setter
-    def position(self, value: int) -> None:
-        if not (self.begin <= value <= self.end):
-            raise IndexError(
-                "position {} not in range {}..{}".format(
-                    value, self.begin, self.end
-                )
+    def __init__(self, args: list[str], /):
+        if len(args) < 1:
+            raise ValueError(
+                "sys.argv[0] is always the program name. Insert a placeholder "
+                "at index 0 if you are using a custom list for `args`"
             )
 
-        self._position = value
-
-    def advance(self, n: int = 1, /) -> None:
-        self.position += n
-
-    def retreat(self, n: int = 1, /) -> None:
-        self.advance(-n)
-
-    def seek(self, position: int, /) -> None:
-        self.advance(position - self.position)
-
-
-class Lexer:
-    def __init__(self, args: List[str], /) -> None:
-        self._args = args[:]  # create a copy of the original
-        self._cursor = Cursor(end=len(self._args))
-
-    @property
-    def args(self) -> List[str]:
-        return self._args[:]
-
-    @property
-    def cursor(self) -> Cursor:
-        return self._cursor
-
-    @property
-    def begin(self) -> int:
-        return 0
-
-    @property
-    def end(self) -> int:
-        return len(self._args)
-
-    @property
-    def escape(self) -> int:
-        try:
-            return self._args.index("--")
-        except ValueError:
-            return self.end
+        self._args = args
+        self._cursor = 0
 
     def __iter__(self) -> Iterator[Token]:
         return self
 
     def __next__(self) -> Token:
+        if self._cursor == 0:
+            arg = self._args[self._cursor]
+            self._cursor += 1
+            return Token(TokenType.PROGRAM, arg)
+
         try:
-            arg = self.args[self.cursor.position]
-            self.cursor.advance(1)
+            arg = self._args[self._cursor]
         except IndexError:
             raise StopIteration
-
-        if self.cursor.position - 1 > self.escape or not arg.startswith("-"):
-            return Token(TokenType.ARGUMENT, arg)
         else:
-            return Token(self.get_token_type(arg), arg)
+            self._cursor += 1
 
-    def peek(self) -> Optional[Token]:
-        original = self.cursor.position
+            if self._cursor - 1 == 0:
+                return Token(TokenType.PROGRAM, arg)
+
+        return Token(self.get_token_type(arg), arg)
+
+    def peek(self) -> Token | None:
+        original = self._cursor
 
         try:
-            token = next(self)
+            return next(self)
         except StopIteration:
             return None
         finally:
-            self.cursor.seek(original)
+            self._cursor = original
 
-        return token
-
-    def get_token_type(self, arg: str, /) -> TokenType:
+    def get_token_type(self, arg: str) -> TokenType:
         if arg.startswith("--"):
             return TokenType.ESCAPE if arg == "--" else TokenType.LONG
         elif arg.startswith("-"):
@@ -217,7 +164,7 @@ class Lexer:
                 return TokenType.STDIN
             elif remainder[0].isalpha():
                 return TokenType.SHORT
-            elif remainder.isnumeric():
+            elif remainder[0].isnumeric():
                 return TokenType.ARGUMENT
             else:
                 raise NotImplementedError

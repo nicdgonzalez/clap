@@ -10,10 +10,6 @@ from .errors import CommandRegistrationError, OptionRegistrationError
 from .help import HelpFormatter, HelpInfo
 
 if TYPE_CHECKING:
-    from builtins import dict as Dict
-    from builtins import list as List
-    from builtins import set as Set
-    from builtins import type as Type
     from typing import Any, Callable, Optional, Union
 
     from typing_extensions import Self
@@ -69,7 +65,7 @@ class CallableArgument(Argument, Protocol):
         raise NotImplementedError
 
     @property
-    def aliases(self) -> List[str]:
+    def aliases(self) -> list[str]:
         raise NotImplementedError
 
     @property
@@ -77,7 +73,7 @@ class CallableArgument(Argument, Protocol):
         raise NotImplementedError
 
     @parent.setter
-    def parent(self, parent: HasCommands) -> None:
+    def parent(self, value: Optional[HasCommands]) -> None:
         raise NotImplementedError
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
@@ -104,12 +100,12 @@ class ParameterizedArgument(Argument, Protocol):
         parameter: inspect.Parameter,
         /,
         brief: str,
-        target_type: Type[Any],
+        target_type: type[Any],
     ) -> Self:
         raise NotImplementedError
 
     @property
-    def target_type(self) -> Type[Any]:
+    def target_type(self) -> type[Any]:
         raise NotImplementedError
 
     @property
@@ -133,18 +129,49 @@ class ParameterizedArgument(Argument, Protocol):
 
 
 @runtime_checkable
-class HasCommands(CallableArgument, Protocol):
+class HasCommands(Protocol):
 
     @property
-    def all_commands(self) -> Dict[str, CallableArgument]:
+    def name(self) -> str:
         raise NotImplementedError
 
     @property
-    def commands(self) -> List[CallableArgument]:
+    def brief(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def description(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def aliases(self) -> list[str]:
+        raise NotImplementedError
+
+    @property
+    def parent(self) -> Optional[HasCommands]:
+        raise NotImplementedError
+
+    @parent.setter
+    def parent(self, value: Optional[HasCommands]) -> None:
+        raise NotImplementedError
+
+    @property
+    def all_commands(self) -> dict[str, HasCommands | CallableArgument]:
+        raise NotImplementedError
+
+    @property
+    def commands(self) -> list[HasCommands | CallableArgument]:
         # filter out aliases while retaining the original order
         return [v for k, v in self.all_commands.items() if k == v.name]
 
-    def add_command(self, command: CallableArgument, /) -> None:
+    @property
+    def help_info(self) -> HelpInfo:
+        return {"name": self.name, "brief": self.brief}
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        raise NotImplementedError
+
+    def add_command(self, command: HasCommands | CallableArgument, /) -> None:
         if command.name in self.all_commands.keys():
             raise CommandRegistrationError(self, command.name)
 
@@ -173,7 +200,9 @@ class HasCommands(CallableArgument, Protocol):
                     self, alias, alias_conflict=True
                 )
 
-    def remove_command(self, name: str, /) -> Optional[CallableArgument]:
+    def remove_command(
+        self, name: str, /
+    ) -> Optional[HasCommands | CallableArgument]:
         if (command := self.all_commands.pop(name, None)) is None:
             return None
 
@@ -188,16 +217,27 @@ class HasCommands(CallableArgument, Protocol):
 
         return command
 
+    def get_help_message(self, formatter: HelpFormatter) -> str:
+        raise NotImplementedError
+
 
 @runtime_checkable
-class HasOptions(CallableArgument, Protocol):
+class HasOptions(Protocol):
 
     @property
-    def all_options(self) -> Dict[str, Option]:
+    def name(self) -> str:
         raise NotImplementedError
 
     @property
-    def options(self) -> List[Option]:
+    def brief(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def all_options(self) -> dict[str, Option]:
+        raise NotImplementedError
+
+    @property
+    def options(self) -> list[Option]:
         # filter out aliases while retaining the original order
         return [v for k, v in self.all_options.items() if k == v.name]
 
@@ -233,12 +273,23 @@ class HasOptions(CallableArgument, Protocol):
 
         return option
 
+    def get_help_message(self, formatter: HelpFormatter) -> str:
+        raise NotImplementedError
+
 
 @runtime_checkable
-class HasPositionalArgs(CallableArgument, Protocol):
+class HasPositionalArgs(Protocol):
 
     @property
-    def all_positionals(self) -> List[Positional]:
+    def name(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def brief(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def all_positionals(self) -> list[Positional]:
         raise NotImplementedError
 
     def add_positional(self, positional: Positional, /) -> None:
@@ -259,6 +310,8 @@ class HasPositionalArgs(CallableArgument, Protocol):
             for index, positional in enumerate(self.all_positionals):
                 if positional.name == name_or_index:
                     return self.all_positionals.pop(index)
+                else:
+                    continue
             else:
                 return None
         else:
@@ -266,3 +319,6 @@ class HasPositionalArgs(CallableArgument, Protocol):
                 "name_or_index expected type str | int, "
                 "got {}".format(type(name_or_index))
             )
+
+    def get_help_message(self, formatter: HelpFormatter) -> str:
+        raise NotImplementedError

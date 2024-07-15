@@ -17,9 +17,6 @@ from .help import HelpBuilder, HelpFormatter
 from .utils import MISSING, parse_docstring
 
 if TYPE_CHECKING:
-    from builtins import dict as Dict
-    from builtins import list as List
-    from builtins import type as Type
     from typing import Any, Callable, Optional
 
     from typing_extensions import Self
@@ -48,9 +45,9 @@ def inject_commands_from_members_into_self(obj: HasCommands, /) -> None:
 
 @dataclasses.dataclass
 class CommandParameters:
-    options: List[Option] = dataclasses.field(default_factory=list)
-    positionals: List[Positional] = dataclasses.field(default_factory=list)
-    mapping: Dict[Type[Any], List[ParameterizedArgument]] = dataclasses.field(
+    options: list[Option] = dataclasses.field(default_factory=list)
+    positionals: list[Positional] = dataclasses.field(default_factory=list)
+    mapping: dict[type[Any], list[ParameterizedArgument]] = dataclasses.field(
         default_factory=dict
     )
 
@@ -84,7 +81,7 @@ def is_method_with_self(fn: Callable[..., Any], /) -> bool:
     )
 
 
-PARAMETER_KIND_MAP: Dict[Any, Type[ParameterizedArgument]] = {
+PARAMETER_KIND_MAP: dict[Any, type[ParameterizedArgument]] = {
     inspect.Parameter.POSITIONAL_ONLY: Positional,
     inspect.Parameter.VAR_POSITIONAL: Positional,
     inspect.Parameter.POSITIONAL_OR_KEYWORD: Positional,
@@ -96,7 +93,7 @@ PARAMETER_KIND_MAP: Dict[Any, Type[ParameterizedArgument]] = {
 def convert_function_parameters(
     fn: Callable[..., Any],
     *,
-    param_docs: Dict[str, str] = {},
+    param_docs: dict[str, str] = {},
     ctx: Optional[CommandParameters] = None,
 ) -> CommandParameters:
     parameters = [_ for _ in inspect.signature(fn).parameters.values()]
@@ -121,7 +118,7 @@ def convert_function_parameters(
     return ctx
 
 
-class Command(HasOptions, HasPositionalArgs):
+class Command(CallableArgument, HasOptions, HasPositionalArgs):
 
     def __init__(
         self,
@@ -130,9 +127,9 @@ class Command(HasOptions, HasPositionalArgs):
         name: str,
         brief: str,
         description: str,
-        aliases: List[str],
-        options: Dict[str, Option],
-        positionals: List[Positional],
+        aliases: list[str],
+        options: dict[str, Option],
+        positionals: list[Positional],
         parent: Optional[HasCommands],
     ) -> None:
         if not callable(callback):
@@ -158,7 +155,7 @@ class Command(HasOptions, HasPositionalArgs):
         if not callable(callback):
             raise TypeError("callback must be callable")
 
-        kwargs.setdefault("name", callback.__name__)
+        kwargs.setdefault("name", callback.__name__.replace("_", "-"))
         parsed_docs = parse_docstring(inspect.getdoc(callback) or "")
         kwargs.setdefault("brief", parsed_docs.pop("__brief__", ""))
         kwargs.setdefault("description", parsed_docs.pop("__desc__", ""))
@@ -179,11 +176,11 @@ class Command(HasOptions, HasPositionalArgs):
         return this
 
     @property
-    def all_options(self) -> Dict[str, Option]:
+    def all_options(self) -> dict[str, Option]:
         return self._options
 
     @property
-    def all_positionals(self) -> List[Positional]:
+    def all_positionals(self) -> list[Positional]:
         return self._positionals
 
     @property
@@ -203,7 +200,7 @@ class Command(HasOptions, HasPositionalArgs):
         return self._description
 
     @property
-    def aliases(self) -> List[str]:
+    def aliases(self) -> list[str]:
         return self._aliases
 
     @property
@@ -289,9 +286,9 @@ class Group(HasCommands, HasOptions):
         name: str,
         brief: str,
         description: str,
-        aliases: List[str],
-        commands: Dict[str, CallableArgument],
-        options: Dict[str, Option],
+        aliases: list[str],
+        commands: dict[str, HasCommands | CallableArgument],
+        options: dict[str, Option],
         parent: Optional[HasCommands],
     ) -> None:
         if not callable(callback):
@@ -339,11 +336,11 @@ class Group(HasCommands, HasOptions):
         return this
 
     @property
-    def all_commands(self) -> Dict[str, CallableArgument]:
+    def all_commands(self) -> dict[str, HasCommands | CallableArgument]:
         return self._commands
 
     @property
-    def all_options(self) -> Dict[str, Option]:
+    def all_options(self) -> dict[str, Option]:
         return self._options
 
     @property
@@ -363,7 +360,7 @@ class Group(HasCommands, HasOptions):
         return self._description
 
     @property
-    def aliases(self) -> List[str]:
+    def aliases(self) -> list[str]:
         return self._aliases
 
     @property
