@@ -41,14 +41,13 @@ def parse_args(
     args: list[str] = sys.argv,
     *,
     formatter: HelpFormatter = HelpFormatter(),
-    raise_exc: bool = False,
 ) -> Any:
     parser = Parser(args, command=interface)
 
     try:
         parsed_args = parser.parse()
     except Exception as exc:
-        _log.error(f"error: {exc}")
+        _log.exception(f"error: {exc}")
         return
 
     has_command = isinstance(parsed_args[-1].command, Command)
@@ -60,7 +59,8 @@ def parse_args(
             return
 
         if (
-            not getattr(ctx.command, "invoke_without_command", False)
+            isinstance(ctx.command, HasCommands)
+            and not ctx.command.invoke_without_command
             and not has_command
         ):
             continue

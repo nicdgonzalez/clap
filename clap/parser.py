@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import logging
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from .abc import CallableArgument, HasCommands, HasOptions, HasPositionalArgs
 from .commands import Command
@@ -16,7 +16,7 @@ from .lexer import Lexer, Token, TokenType
 from .utils import MISSING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Optional
+    from typing import Any
 
     from .arguments import Option
     from .core import Application, Script
@@ -72,9 +72,9 @@ class Parser:
                 if next_token and next_token.type != TokenType.ARGUMENT:
                     next_token = None
 
-                self.handle_token_short(token, next_token)
+                self.handle_token_short(token, next_token=next_token)
             case TokenType.ARGUMENT:
-                self.handle_token_argument(token, next_token=next_token)
+                self.handle_token_argument(token)
             case TokenType.ESCAPE:
                 self.handle_token_escape(next_token)
             case TokenType.value.STDIN:
@@ -98,6 +98,7 @@ class Parser:
             if next_token is not None and option.n_args.maximum > 0:
                 assert next_token.type == TokenType.ARGUMENT
                 value = next_token.value
+                _ = next(self.lexer)
             elif option.target_type is bool:
                 value = str(not option.default)
             else:
@@ -126,9 +127,7 @@ class Parser:
             new_token = Token(new_type, new_value)
             self.handle_token_long(new_token, next_token=next_token)
 
-    def handle_token_argument(
-        self, token: Token, *, next_token: Token | None
-    ) -> None:
+    def handle_token_argument(self, token: Token) -> None:
         if isinstance(self.ctx.command, HasCommands):
             self.handle_token_escape(next_token=None)
 
@@ -194,7 +193,7 @@ class Parser:
         elif isinstance(self.ctx.command, Command):
             # Consume the rest of the tokens as arguments
             for token in self.lexer:
-                self.handle_token_argument(token, next_token=None)
+                self.handle_token_argument(token)
 
 
 # TODO: Allow users to use custom converters for custom type arguments --
