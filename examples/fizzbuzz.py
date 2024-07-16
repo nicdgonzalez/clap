@@ -5,13 +5,13 @@ from typing import Annotated
 import clap
 
 
-@clap.Script.from_main
+@clap.script()
 def fizzbuzz(
     # positional arguments are converted into Positionals
     *,
     # keyword-only arguments are converted into Options
-    min: int = 1,
-    max: int = 15,
+    min: Annotated[int, clap.Alias("a")] = 1,
+    max: Annotated[int, clap.Alias("b")] = 15,
     skip_empty: Annotated[bool, clap.Alias("s")] = False,
 ) -> None:
     """A simple FizzBuzz implementation to demo `clap.Script`!
