@@ -20,9 +20,7 @@ from .parser import Parser
 from .utils import MISSING, parse_docstring
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Self, Union
-
-    from typing_extensions import Self
+    from typing import Any, Callable, Self
 
     from .arguments import Option, Positional
 
@@ -39,28 +37,43 @@ _log = logging.getLogger(__name__)
 
 
 def parse_args(
-    interface: Union[Application, Script],
+    interface: Application | Script,
     args: list[str] = sys.argv,
     *,
     formatter: HelpFormatter = HelpFormatter(),
+    raise_exc: bool = False,
 ) -> Any:
-    parser = Parser(args[1:], command=interface)
-    ctx = parser.parse()
-
-    if ctx.kwargs.pop("help", False) is True:
-        # display the help message
-        m = ctx.command.get_help_message(formatter=formatter)
-        sys.stdout.write(m)
-        return
+    parser = Parser(args, command=interface)
 
     try:
-        return ctx.command(*ctx.args, **ctx.kwargs)
-    except TypeError:  # argument-related error
-        m = ctx.command.get_help_message(formatter=formatter)
-        sys.stdout.write(m)
-        return
+        parsed_args = parser.parse()
     except Exception as exc:
-        _log.exception(exc)
+        _log.error(f"error: {exc}")
+        return
+
+    has_command = isinstance(parsed_args[-1].command, Command)
+
+    for ctx in parsed_args:
+        if ctx.kwargs.pop("help", False) or len(args) == 1:
+            m = ctx.command.get_help_message(formatter=formatter)
+            sys.stdout.write(m)
+            return
+
+        if (
+            not getattr(ctx.command, "invoke_without_command", False)
+            and not has_command
+        ):
+            continue
+
+        try:
+            result = ctx.command(*ctx.args, **ctx.kwargs)
+        except Exception as exc:
+            _log.error(f"error: {exc}")
+            return
+        else:
+            pass
+    else:
+        return result  # only return the result of the last call to ctx.command
 
 
 class Extension(HasCommands):
@@ -111,8 +124,7 @@ class Application(HasCommands, HasOptions):
         return
 
     def __call__(self, *args: Any, **kwargs: Any) -> None:
-        message = self.get_help_message(HelpFormatter())
-        sys.stdout.write(message)
+        return
 
     @property
     def name(self) -> str:

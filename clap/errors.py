@@ -68,8 +68,8 @@ class InvalidOptionError(ClapException):
 
 class TooManyArgumentsError(ClapException):
 
-    def __init__(self, obj: HasPositionalArgs, token: Token) -> None:
+    def __init__(self, obj: HasPositionalArgs, args: list[Any]) -> None:
         m = "too many arguments provided to {}: {}"
-        args = [p.name for p in obj.all_positionals]
-        args.append(token.value)
+        # TODO: error message stinks, i think it should have an expected len vs actual or something
+        args = [f"{p.name}={a}" for p, a in zip(obj.all_positionals, args)]
         super().__init__(m.format(obj.name, ",".join(args)))

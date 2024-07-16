@@ -132,6 +132,10 @@ class ParameterizedArgument(Argument, Protocol):
 class HasCommands(Protocol):
 
     @property
+    def invoke_without_command(self) -> bool:
+        return False
+
+    @property
     def name(self) -> str:
         raise NotImplementedError
 

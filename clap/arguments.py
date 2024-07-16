@@ -273,6 +273,21 @@ class Option(ParameterizedArgument):
 
         return {"name": name, "brief": brief}
 
+    def validate_requires(self, options: list[str]) -> None:
+        for option in self.requires:
+            if option not in options:
+                # TODO: Create RequiredOptionError(obj: self, option: str)
+                raise ValueError(
+                    f"option {self.name!r} requires option {option!r}"
+                )
+
+    def validate_conflicts(self, options: list[str]) -> None:
+        for option in self.conflicts:
+            if option not in options:
+                raise ValueError(
+                    f"option {self.name!r} conflicts with option {option!r}"
+                )
+
 
 DEFAULT_HELP = Option(
     "help",
