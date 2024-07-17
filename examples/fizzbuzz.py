@@ -14,7 +14,7 @@ def fizzbuzz(
     # keyword-only arguments are converted into Options
     skip_empty: Annotated[bool, clap.Alias("s")] = False,
 ) -> None:
-    """A simple FizzBuzz implementation to demo `clap.Script`!
+    """A simple FizzBuzz implementation demonstrating clap.Script!
 
     FizzBuzz is a simple programming task where you iterate over a range of
     values and print either "Fizz" or "Buzz" when the index is divisible by
