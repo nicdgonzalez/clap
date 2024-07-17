@@ -34,41 +34,35 @@ python -m pip install ndg.clap
 > This library currently only supports parsing through docstrings that
 > follow the [NumPy documentation format](https://github.com/numpy/numpydoc).
 
+<a name="script"></a>
 ### Script
 
-<!-- See [examples/fizzbuzz.py](./examples/fizzbuzz.py) for the code. -->
+The Script interface is useful for times when you only need to expose a single
+function to the command line. For exposing multiple functions, see the
+[Application](#application) section.
 
-Copy the following code into your own file, then try running it with
-the `--help` option!
+The following is a minimized example to give you an idea of what this project
+looks like. See the [examples](./examples/) directory for the full code
+and additional examples!
 
 ```python
 from typing import Annotated
 
 import clap
 
-script = clap.Script(
-    # name=...,        # defaults to the filename
-    # brief="",        # same as first line of docstring
-    # description="",  # same as first paragraph of docstring
-    # epilog=...,      # text to display at the end of the help message
-)
 
-
-@script.main()
+@clap.script()
 def fizzbuzz(
     # positional arguments are converted into Positionals
-    *,
-    # keyword-only arguments are converted into Options
     min: int = 1,
     max: int = 15,
+    *,
+    # keyword-only arguments are converted into Options
     skip_empty: Annotated[bool, clap.Alias("s")] = False,
 ) -> None:
-    """A simple FizzBuzz implementation to demo `clap.Script`!
+    """A simple FizzBuzz implementation demonstrating clap.Script!
 
-    FizzBuzz is a simple programming task where you iterate over a range of
-    values and print either "Fizz" or "Buzz" when the index is divisible by
-    `3` or `5` (respectively). If the index is divisible by both values,
-    print both (i.e. "FizzBuzz").
+    FizzBuzz is a simple programming task where [...]
 
     Parameters
     ----------
@@ -82,44 +76,16 @@ def fizzbuzz(
     skip_empty : bool
         Whether to skip indexes that don't print anything
     """
-    mapping = {
-        3: "Fizz",
-        5: "Buzz",
-    }
-    buffer = ""
-
-    start, stop = sorted((min, max))
-    index_width = len(str(stop))
-
-    for i in range(start, stop + 1):  # +1 to make `stop` inclusive
-        for n, word in mapping.items():
-            if i > 0 and i % n == 0:
-                buffer += word
-
-        if skip_empty and buffer == "":
-            continue
-
-        print("{0:0>{1}d}: {2}".format(i, index_width, buffer))
-        buffer = ""
 
 
 if __name__ == "__main__":
-    formatter = clap.HelpFormatter(
-        # width=80,             # columns that the help message uses
-        # name_width=...,       # columns that an item name uses [width // 4]
-        # indent=2,             # indentation of each item under a section
-        # placeholder="[...]",  # displays if name is longer than name_width
-        # compact=False,        # flattens unnecessary newlines
-    )
-    script.parse_args(
-        # args=[...],  # defaults to sys.argv
-        formatter=formatter,
-    )
+    formatter = clap.HelpFormatter(...)
+    _ = clap.parse_args(fizzbuzz, formatter=formatter)
 ```
 
 ```console
 $ python ./examples/fizzbuzz.py --help
-A simple FizzBuzz implementation to demo `clap.Script`!
+A simple FizzBuzz implementation demonstrating clap.Script!
 
 DESCRIPTION:
   FizzBuzz is a simple programming task where you iterate over a range of values
@@ -128,25 +94,100 @@ DESCRIPTION:
   "FizzBuzz").
 
 USAGE:
-  fizzbuzz.py [--help | --min | --max | --skip-empty]
+  fizzbuzz.py [--help | --skip-empty] [min=1] [max=15]
 
 OPTIONS:
   -h, --help        Shows this help message and exits
-  --min             The index to start from [default: 1]
-  --max             The index to stop at (inclusive) [default: 100]
   -s, --skip-empty  Whether to skip indexes that don't print anything
+
+ARGUMENTS:
+  min  The index to start from (inclusive) [default: 1]
+  max  The index to stop at (inclusive) [default: 15]
 ```
 
+<a name="application"></a>
 ### Application
 
-See the [examples/demo](./examples/demo) directory for the code of this simplified
-example.
+The Application interface is useful for times when you need to expose multiple
+functions to the command line. For exposing a single function, see the
+[Script](#script) section.
 
-```console
-$ cd ./examples/demo
-$ python -m task_app --help
-[WORK IN PROGRESS]
+The following is a minimized example to give you an idea of what this project
+looks like. See the [examples](./examples/) directory for the full code
+and additional examples!
+
+> [!TIP]
+> Check out [Fuji](https://github.com/nicdgonzalez/fuji) for a more robust
+> example of the application interface.
+
+```python
+import dataclasses
+
+import clap
+
+app = clap.Application(
+    brief="A simple to-do application demonstrating clap.Application!"
+)
+
+
+@dataclasses.dataclass
+class Task:
+    id: int
+    note: str
+    is_complete: bool
+
+
+@app.command(name="list", aliases=["ls"])
+def list_command(*, all: bool = False):
+    """Display all of the available tasks.
+
+    Parameters
+    ----------
+    all : bool
+        Whether to also display completed tasks.
+    """
+
+
+@app.command()
+def add(note: str):
+    """Create a new task.
+
+    Parameters
+    ----------
+    note : str
+        A message representing the task to be completed.
+    """
+
+
+@app.command()
+def delete(id: int):
+    """Remove an existing task.
+
+    Parameters
+    ----------
+    id : int
+        The unique identifier of an existing task.
+    """
+
+
+if __name__ == "__main__":
+    clap.parse_args(app)
 ```
 
-Also check out [Fuji](https://github.com/nicdgonzalez/fuji) — a full-fledged,
-production-ready application built using this project!
+```console
+$ python ./examples/to_do.py --help
+A simple to-do application demonstrating clap.Application!
+
+USAGE:
+  to-do [--help] <command> [<args>...]
+
+OPTIONS:
+  -h, --help  Shows this help message and exits
+
+COMMANDS:
+  list         Display all of the available tasks.
+  add          Create a new task.
+  delete       Remove an existing task.
+
+Built using ndg.clap!
+```
