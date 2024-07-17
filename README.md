@@ -14,7 +14,10 @@ be adding to your code anyway).
 This project is currently missing a lot of features that you would otherwise get
 from the built-in `argparse` library. Though, I plan to cover as much as I can.
 
-[Introduction](#introduction) | [Installation](#installation) | [Quickstart](#quickstart)
+[Introduction](#introduction)
+| [Installation](#installation)
+| [Quickstart](#quickstart)
+| [Acknowledgements](#acknowledgements)
 
 <a name="installation"></a>
 ## Installation
@@ -191,3 +194,14 @@ COMMANDS:
 
 Built using ndg.clap!
 ```
+
+<a name="acknowledgements"></a>
+## Acknowledgements
+
+The Application and Extension interface (not shown in the above
+examples, but used in the Fuji project mentioned) is heavily
+inspired by [rapptz/discord.py](https://github.com/rapptz/discord.py)'s
+Bot and Cog implementation. discord.py is one of the most well-written
+Python libraries out there. Thank you for sharing this masterpiece with
+the open source community, and enabling me to create something I think
+can be useful to others!
