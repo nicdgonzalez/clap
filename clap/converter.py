@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import types
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -61,7 +62,7 @@ def convert(
 ) -> Optional[Any]:
     origin = get_origin(converter)
 
-    if origin is Union:
+    if origin in (types.UnionType, Union):
         errors: list[Exception] = []
         union_args = get_args(converter)
 
