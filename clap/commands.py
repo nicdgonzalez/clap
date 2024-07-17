@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
-import logging
 from typing import TYPE_CHECKING, get_type_hints
 
 from .abc import (
@@ -13,17 +12,15 @@ from .abc import (
     ParameterizedArgument,
 )
 from .arguments import DEFAULT_HELP, Option, Positional
-from .help import HelpBuilder, HelpFormatter
+from .help import HelpBuilder, HelpFormatter, HelpInfo
 from .utils import MISSING, parse_docstring
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Optional
+    from typing import Any, Callable
 
     from typing_extensions import Self
 
 __all__ = ("Command", "command", "Group", "group")
-
-_log = logging.getLogger(__name__)
 
 
 def inject_commands_from_members_into_self(obj: HasCommands, /) -> None:
@@ -94,7 +91,7 @@ def convert_function_parameters(
     fn: Callable[..., Any],
     *,
     param_docs: dict[str, str] = {},
-    ctx: Optional[CommandParameters] = None,
+    ctx: CommandParameters | None = None,
 ) -> CommandParameters:
     parameters = [_ for _ in inspect.signature(fn).parameters.values()]
 
@@ -130,7 +127,7 @@ class Command(CallableArgument, HasOptions, HasPositionalArgs):
         aliases: list[str],
         options: dict[str, Option],
         positionals: list[Positional],
-        parent: Optional[HasCommands],
+        parent: HasCommands | None,
     ) -> None:
         if not callable(callback):
             raise TypeError("callback must be callable")
@@ -204,7 +201,7 @@ class Command(CallableArgument, HasOptions, HasPositionalArgs):
         return self._aliases
 
     @property
-    def parent(self) -> Optional[HasCommands]:
+    def parent(self) -> HasCommands | None:
         return self._parent
 
     @parent.setter
@@ -289,11 +286,8 @@ class Group(HasCommands, HasOptions):
         aliases: list[str],
         commands: dict[str, HasCommands | CallableArgument],
         options: dict[str, Option],
-        parent: Optional[HasCommands],
+        parent: HasCommands | None,
     ) -> None:
-        if not callable(callback):
-            raise TypeError("callback must be callable")
-
         self._callback = callback
         self._name = name
         self._brief = brief
@@ -312,9 +306,6 @@ class Group(HasCommands, HasOptions):
         /,
         **kwargs: Any,
     ) -> Self:
-        if not callable(callback):
-            raise TypeError("callback must be callable")
-
         kwargs.setdefault("name", callback.__name__)
         parsed_docs = parse_docstring(inspect.getdoc(callback) or "")
         kwargs.setdefault("brief", parsed_docs.get("__brief__", ""))
@@ -364,15 +355,16 @@ class Group(HasCommands, HasOptions):
         return self._aliases
 
     @property
-    def parent(self) -> Optional[HasCommands]:
+    def parent(self) -> HasCommands | None:
         return self._parent
 
     @parent.setter
     def parent(self, value: HasCommands) -> None:
-        if not isinstance(value, HasCommands):
-            raise TypeError("value does not satisfy the HasCommands protocol")
-
         self._parent = value
+
+    @property
+    def help_info(self) -> HelpInfo:
+        return {"name": "+" + self.name, "brief": self.brief}
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         if hasattr(self.callback, "__self__"):

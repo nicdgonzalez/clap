@@ -3,13 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, ClassVar
+    from typing import Any, ClassVar, Iterable
 
     from .abc import HasCommands, HasOptions, HasPositionalArgs
     from .lexer import Token
 
 __all__ = (
     "ClapException",
+    "ErrorMessage",
     "CommandRegistrationError",
     "OptionRegistrationError",
     "InvalidCommandError",
@@ -20,6 +21,10 @@ __all__ = (
 
 class ClapException(Exception):
     pass
+
+
+class ErrorMessage(ClapException):
+    """User-defined error messages intended to be sent without a stacktrace."""
 
 
 class CommandRegistrationError(ClapException):
@@ -68,8 +73,8 @@ class InvalidOptionError(ClapException):
 
 class TooManyArgumentsError(ClapException):
 
-    def __init__(self, obj: HasPositionalArgs, args: list[Any]) -> None:
-        m = "too many arguments provided to {}: {}"
-        # TODO: error message stinks, i think it should have an expected len vs actual or something
-        args = [f"{p.name}={a}" for p, a in zip(obj.all_positionals, args)]
-        super().__init__(m.format(obj.name, ",".join(args)))
+    def __init__(self, obj: HasPositionalArgs, args: Iterable[Any]) -> None:
+        m = "too many arguments provided to {!r}. expected {}, got {}"
+        expected = len(obj.all_positionals)
+        got = len(args)
+        super().__init__(m.format(obj.name, expected, got))

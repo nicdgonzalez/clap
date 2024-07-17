@@ -57,8 +57,6 @@ class Parser:
 
         return self.queue
 
-    # TODO: Make handle_* methods return a value instead of producing side effects...
-
     def handle_token(self, token: Token) -> None:
         next_token = self.lexer.peek()
 
@@ -77,8 +75,9 @@ class Parser:
                 self.handle_token_argument(token)
             case TokenType.ESCAPE:
                 self.handle_token_escape(next_token)
-            case TokenType.value.STDIN:
-                raise NotImplementedError  # idk how to handle this tbh
+            case TokenType.STDIN:
+                # TODO: I'm not sure how to properly handle this case
+                raise NotImplementedError
             case _:
                 raise NotImplementedError
 
@@ -88,6 +87,7 @@ class Parser:
         self, token: Token, *, next_token: Token | None
     ) -> None:
         flag, value = token.from_long_option()
+        assert isinstance(self.ctx.command, HasOptions)
 
         try:
             option: Option = self.ctx.command.all_options[flag]
@@ -112,6 +112,8 @@ class Parser:
     def handle_token_short(
         self, token: Token, *, next_token: Token | None
     ) -> None:
+        assert isinstance(self.ctx.command, HasOptions)
+
         for flag, value in token.from_short_option():
             try:
                 option: Option = self.ctx.command.all_options[flag]
@@ -134,12 +136,12 @@ class Parser:
             try:
                 self.ctx.command = self.ctx.command.all_commands[token.value]
             except KeyError as exc:
-                raise InvalidCommandError(self.ctx.command, token) from exc
+                raise InvalidCommandError(self.ctx.command, token) from exc  # type: ignore
             else:
                 return
         else:
             assert isinstance(self.ctx.command, HasPositionalArgs)
-            index = len(self.ctx.command.all_positionals) - 1
+            index = len(self.ctx.command.all_positionals)
 
             try:
                 positional = self.ctx.command.all_positionals[index]
@@ -153,10 +155,6 @@ class Parser:
 
     def handle_token_escape(self, next_token: Token | None) -> None:
         if isinstance(self.ctx.command, HasCommands):
-            # Gather default values for Options
-            # TODO: Make HasOptions part of the being a callable argument thing
-            # since Applications, Scripts, Groups, Commands, everything includes Options
-            # and is expected to (it's how we know to display the help menu, right?)
             assert isinstance(self.ctx.command, HasOptions)
 
             for option in self.ctx.command.all_options.values():
@@ -167,10 +165,8 @@ class Parser:
 
                 self.ctx.kwargs[kwarg] = option.default
 
-            # Validate conflicts/requires
             for option_name in self.ctx.kwargs.keys():
-                # NOTE: this should not throw any errors since we are
-                # reversing how we got here in the first place
+                # This should be safe, since we are reversing how we got here
                 option = self.ctx.command.all_options[
                     option_name.replace("_", "-")
                 ]
@@ -190,11 +186,8 @@ class Parser:
                 ) from exc
             else:
                 self.ctx = ParsedArgs(command=next_command)
+                _ = next(self.lexer)
         elif isinstance(self.ctx.command, Command):
             # Consume the rest of the tokens as arguments
             for token in self.lexer:
                 self.handle_token_argument(token)
-
-
-# TODO: Allow users to use custom converters for custom type arguments --
-# requires convert method that takes single positional only string parameter

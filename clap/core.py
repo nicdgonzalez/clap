@@ -15,6 +15,7 @@ from .commands import (
     convert_function_parameters,
     inject_commands_from_members_into_self,
 )
+from .errors import ErrorMessage
 from .help import HelpBuilder, HelpFormatter
 from .parser import Parser
 from .utils import MISSING, parse_docstring
@@ -67,8 +68,10 @@ def parse_args(
 
         try:
             result = ctx.command(*ctx.args, **ctx.kwargs)
-        except Exception as exc:
+        except ErrorMessage as exc:
             _log.error(f"error: {exc}")
+        except Exception as exc:
+            _log.exception(exc)
             return
         else:
             pass

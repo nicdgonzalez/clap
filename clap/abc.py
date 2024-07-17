@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import inspect
-import logging
 from typing import TYPE_CHECKING, Protocol, overload, runtime_checkable
 
 from .annotations import Alias, Range
@@ -10,7 +9,7 @@ from .errors import CommandRegistrationError, OptionRegistrationError
 from .help import HelpFormatter, HelpInfo
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Optional, Union
+    from typing import Any, Callable
 
     from typing_extensions import Self
 
@@ -24,8 +23,6 @@ __all__ = (
     "HasOptions",
     "HasPositionalArgs",
 )
-
-_log = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -52,6 +49,7 @@ class CallableArgument(Argument, Protocol):
     The following classes implement this ABC:
 
     * :class:`Application`
+    * :class:`Script`
     * :class:`Command`
     * :class:`Group`
     """
@@ -69,11 +67,11 @@ class CallableArgument(Argument, Protocol):
         raise NotImplementedError
 
     @property
-    def parent(self) -> Optional[HasCommands]:
+    def parent(self) -> HasCommands | None:
         raise NotImplementedError
 
     @parent.setter
-    def parent(self, value: Optional[HasCommands]) -> None:
+    def parent(self, value: HasCommands | None) -> None:
         raise NotImplementedError
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
@@ -152,11 +150,11 @@ class HasCommands(Protocol):
         raise NotImplementedError
 
     @property
-    def parent(self) -> Optional[HasCommands]:
+    def parent(self) -> HasCommands | None:
         raise NotImplementedError
 
     @parent.setter
-    def parent(self, value: Optional[HasCommands]) -> None:
+    def parent(self, value: HasCommands | None) -> None:
         raise NotImplementedError
 
     @property
@@ -206,7 +204,7 @@ class HasCommands(Protocol):
 
     def remove_command(
         self, name: str, /
-    ) -> Optional[HasCommands | CallableArgument]:
+    ) -> HasCommands | CallableArgument | None:
         if (command := self.all_commands.pop(name, None)) is None:
             return None
 
@@ -263,7 +261,7 @@ class HasOptions(Protocol):
 
         self.all_options[option.alias] = option
 
-    def remove_option(self, name: str, /) -> Optional[Option]:
+    def remove_option(self, name: str, /) -> Option | None:
         if (option := self.all_options.pop(name, None)) is None:
             return None
 
@@ -300,17 +298,17 @@ class HasPositionalArgs(Protocol):
         self.all_positionals.append(positional)
 
     @overload
-    def remove_positional(self, name: str, /) -> Optional[Positional]: ...
+    def remove_positional(self, name: str, /) -> Positional | None: ...
 
     @overload
-    def remove_positional(self, index: int, /) -> Optional[Positional]: ...
+    def remove_positional(self, index: int, /) -> Positional | None: ...
 
     def remove_positional(
-        self, name_or_index: Union[str, int], /
-    ) -> Optional[Positional]:
+        self, name_or_index: str | int, /
+    ) -> Positional | None:
         if isinstance(name_or_index, int):
             return self.all_positionals.pop(name_or_index)
-        elif isinstance(name_or_index, str):
+        else:
             for index, positional in enumerate(self.all_positionals):
                 if positional.name == name_or_index:
                     return self.all_positionals.pop(index)
@@ -318,11 +316,6 @@ class HasPositionalArgs(Protocol):
                     continue
             else:
                 return None
-        else:
-            raise TypeError(
-                "name_or_index expected type str | int, "
-                "got {}".format(type(name_or_index))
-            )
 
     def get_help_message(self, formatter: HelpFormatter) -> str:
         raise NotImplementedError

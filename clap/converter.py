@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
     T = TypeVar("T")
 
+# TODO: Allow users to create custom converters.
+
 
 def is_generic_type(cls: type[Any], /) -> bool:
     return (

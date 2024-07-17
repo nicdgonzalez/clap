@@ -9,27 +9,21 @@ from .help import HelpInfo
 from .utils import MISSING
 
 if TYPE_CHECKING:
-    from builtins import dict as Dict
-    from builtins import set as Set
-    from builtins import tuple as Tuple
-    from builtins import type as Type
-    from typing import Any, Optional
-
-    from typing_extensions import Self
+    from typing import Any, Iterable, Self
 
     T = TypeVar("T")
 
 __all__ = ("Positional", "Option")
 
 
-def convert_metadata(metadata: Tuple[Any, ...], /) -> Dict[str, Any]:
+def convert_metadata(metadata: tuple[Any, ...], /) -> dict[str, Any]:
     type_to_kwarg_map = {
         Range: "n_args",
         Alias: "alias",
         Requires: "requires",
         Conflicts: "conflicts",
     }
-    data: Dict[str, Any] = {}
+    data: dict[str, Any] = {}
 
     for value in metadata:
         try:
@@ -49,9 +43,9 @@ class Positional(ParameterizedArgument):
         name: str,
         brief: str,
         *,
-        target_type: Type[T],
+        target_type: type[T],
         default: T = MISSING,
-        n_args: Tuple[int, int] = (1, 1),
+        n_args: tuple[int, int] = (1, 1),
     ) -> None:
         self._name = name
         self._brief = brief
@@ -84,9 +78,9 @@ class Positional(ParameterizedArgument):
         parameter: inspect.Parameter,
         /,
         brief: str,
-        target_type: Type[Any],
+        target_type: type[Any],
     ) -> Self:
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "name": parameter.name.replace("_", "-"),
             "brief": brief,
             "target_type": target_type,
@@ -113,7 +107,7 @@ class Positional(ParameterizedArgument):
         return self._brief
 
     @property
-    def target_type(self) -> Type[Any]:
+    def target_type(self) -> type[Any]:
         return self._target_type
 
     @property
@@ -146,12 +140,12 @@ class Option(ParameterizedArgument):
         name: str,
         brief: str,
         *,
-        target_type: Type[T],
+        target_type: type[T],
         default: T = MISSING,
-        n_args: Tuple[int, int] = MISSING,
+        n_args: tuple[int, int] = MISSING,
         alias: str = "",
-        requires: Optional[Set[str]] = None,
-        conflicts: Optional[Set[str]] = None,
+        requires: set[str] | None = None,
+        conflicts: set[str] | None = None,
         **kwargs: Any,
     ) -> None:
         self._name = name
@@ -198,9 +192,9 @@ class Option(ParameterizedArgument):
         parameter: inspect.Parameter,
         /,
         brief: str,
-        target_type: Type[Any],
+        target_type: type[Any],
     ) -> Self:
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "name": parameter.name.replace("_", "-"),
             "brief": brief,
             "target_type": target_type,
@@ -227,7 +221,7 @@ class Option(ParameterizedArgument):
         return self._brief
 
     @property
-    def target_type(self) -> Type[Any]:
+    def target_type(self) -> type[Any]:
         return self._target_type
 
     @property
@@ -273,17 +267,18 @@ class Option(ParameterizedArgument):
 
         return {"name": name, "brief": brief}
 
-    def validate_requires(self, options: list[str]) -> None:
+    def validate_requires(self, options: Iterable[str]) -> None:
         for option in self.requires:
             if option not in options:
-                # TODO: Create RequiredOptionError(obj: self, option: str)
+                # TODO: Create a custom error type
                 raise ValueError(
                     f"option {self.name!r} requires option {option!r}"
                 )
 
-    def validate_conflicts(self, options: list[str]) -> None:
+    def validate_conflicts(self, options: Iterable[str]) -> None:
         for option in self.conflicts:
             if option not in options:
+                # TODO: Create a custom error type
                 raise ValueError(
                     f"option {self.name!r} conflicts with option {option!r}"
                 )
