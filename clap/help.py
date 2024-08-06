@@ -59,13 +59,18 @@ class TreeData:
 
 @dataclasses.dataclass
 class HelpFormatter:
-    width: int = min(os.get_terminal_size().columns, 80)
+    width: int = 80
     name_width: int = -1
     indent: int = 2
     placeholder: str = "[...]"
     compact: bool = False
 
     def __post_init__(self) -> None:
+        try:
+            self.width = min(os.get_terminal_size().columns, 80)
+        except OSError:
+            self.width = 80
+
         if self.name_width < 0:
             self.name_width = self.width // 4
 
