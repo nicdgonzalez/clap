@@ -44,13 +44,7 @@ def parse_args(
     formatter: HelpFormatter = HelpFormatter(),
 ) -> Any:
     parser = Parser(args, command=interface)
-
-    try:
-        parsed_args = parser.parse()
-    except Exception as exc:
-        _log.exception(f"error: {exc}")
-        return
-
+    parsed_args = parser.parse()
     has_command = isinstance(parsed_args[-1].command, Command)
 
     for ctx in parsed_args:

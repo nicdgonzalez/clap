@@ -141,7 +141,7 @@ class Parser:
                 return
         else:
             assert isinstance(self.ctx.command, HasPositionalArgs)
-            index = len(self.ctx.command.all_positionals)
+            index = len(self.ctx.command.all_positionals) - 1
 
             try:
                 positional = self.ctx.command.all_positionals[index]

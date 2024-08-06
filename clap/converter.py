@@ -97,6 +97,12 @@ def convert(
 
             if value == literal:
                 return value
+            else:
+                pass
+        else:
+            raise ValueError(
+                f"{argument!r} must be one of: {','.join(valid_literals)}"
+            )
 
     elif origin is not None and is_generic_type(converter):
         converter = origin
