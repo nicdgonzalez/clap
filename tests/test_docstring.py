@@ -6,7 +6,6 @@ from clap.docstring import parse_doc
 class TestDocstring(unittest.TestCase):
     def test_empty(self) -> None:
         doc = ""
-
         result = parse_doc(doc)
 
         self.assertEqual(result["short_summary"], "")
@@ -83,11 +82,11 @@ class TestDocstring(unittest.TestCase):
                 "title": ("str", "The name of the task."),
                 "description": (
                     "",
-                    "A detailed explanation of the task's purpose. This field should provide sufficient context for the user.",
+                    "A detailed explanation of the task's purpose. This field should provide sufficient context for the user.",  # noqa: E501
                 ),
                 "due_date": (
                     "str, optional",
-                    "A deadline for the task in 'YYYY-MM-DD' format. If omitted, the task will not have a due date.",
+                    "A deadline for the task in 'YYYY-MM-DD' format. If omitted, the task will not have a due date.",  # noqa: E501
                 ),
                 "priority": (
                     "{'low', 'normal', 'high'}, optional",

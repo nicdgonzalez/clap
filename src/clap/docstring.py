@@ -40,7 +40,7 @@ def parse_doc(doc: str | None, /) -> Docstring:
     ----------
     doc : str | None
         The target function's docstring.
-        
+
     Returns
     -------
     Docstring
@@ -74,27 +74,33 @@ def parse_doc(doc: str | None, /) -> Docstring:
     result["short_summary"] = sections.pop(0).strip()
 
     try:
-        next_section = sections.pop(0).strip()
+        next_section = sections[0]
     except IndexError:
         # There are no more sections.
         return result
+    else:
+        next_section = next_section.strip()
 
     # Check for the "Deprecation Warning" section.
     match = re.match(r"^\.\. deprecated:: ([\d\.]+)\n\s{4}(.*)", next_section)
 
     if match is not None:
+        _ = sections.pop(0)
         version = match.group(1)
         message = re.sub(r"\s+", " ", match.group(2))
         result["deprecation_warning"] = (version, message)
 
-    try:
-        next_section = sections.pop(0).strip()
-    except IndexError:
-        # There are no more sections.
-        return result
+        try:
+            next_section = sections[0]
+        except IndexError:
+            # There are no more sections.
+            return result
+        else:
+            next_section = next_section.strip()
 
     # Check for the "Extended Summary" section(s).
     if not is_section_with_heading(next_section):
+        _ = sections.pop(0)
         chunks: list[str] = [next_section]
 
         while len(sections) > 0 and not is_section_with_heading(sections[0]):
@@ -148,7 +154,7 @@ def is_section_with_heading(section: str, /) -> bool:
 
 def handle_parameters(content: str, /) -> dict[str, tuple[str, str]]:
     matches = re.findall(
-        r"^([\w_\d]+)(?:(?: : )([\w\d ,{}\"\']+))?$((?:\s{4,}.*\n?)+)",
+        r"^([\w_\d]+)(?:(?: : )([\w\d ,{}\"\'=]+))?$((?:\s{4,}.*\n?)+)",
         content,
         re.MULTILINE,
     )

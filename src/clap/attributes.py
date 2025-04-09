@@ -1,6 +1,10 @@
-class Short:
-    def __init__(self, __c: str, /) -> None:
-        if len(__c) != 1:
-            raise ValueError("expected short to be a single character")
+class Short(str):
+    def __new__(cls, o: object) -> "Short":
+        c = super().__new__(cls, o)
 
-        self.inner = __c
+        if len(c) != 1:
+            raise ValueError("expected short to be a single character")
+        elif not c.isalpha():
+            raise ValueError("expected short to be a letter")
+
+        return c

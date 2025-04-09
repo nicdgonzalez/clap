@@ -6,19 +6,12 @@ import clap
 
 app = clap.Application(
     name="knight",
-    brief="Automatically switch between system themes based on the time of day.",  # noqa: E501
+    brief="Clone a repository into a new directory.",
     description=(
-        """
-🛡️ Knight allows you to switch system themes automatically based on the time of
-day (for the GNOME desktop environment on Linux).
-
-✨ Features
-
-- Automatically toggle between light and dark theme.
-- Determines sunrise and sunset times based on your location.
-- Configurable through a dedicated configuration file.
-- Supports changing themes manually, and pausing the automatic theme switcher.
-        """
+        """Clones a repository into a newly created directory, creates
+remote-tracking branches for each branch in the cloned repository (visible
+using git branch --remotes), and creates and checks out an initial branch
+that is forked from the cloned repository’s currently active branch."""
     ),
     after_help="Repository: https://github.com/nicdgonzalez/knight",
 )
@@ -35,14 +28,14 @@ def ping(
 
     Parameters
     ----------
-    hostname : str
+    host : str
         The address of the server to connect to.
     port : int
         A valid port number between 0 and 65535.
     silent : bool, default=False
         Whether to supress output.
     """
-    raise NotImplementedError
+    print("Pinging server...")
 
 
 @app.command()
@@ -57,7 +50,16 @@ def add(task: str) -> None:
     raise NotImplementedError
 
 
-dummy_input = ["ping", "--silent", "--host=0.0.0.0", "-p", "25565"]
-args = clap.parse(app, input=dummy_input)
-print(args)
-app.run(input=dummy_input)
+@app.command()
+def remove(task: str) -> None:
+    """Delete an existing task.
+
+    Parameters
+    ----------
+    task : str
+        A brief description for the task.
+    """
+    raise NotImplementedError
+
+
+app.run()

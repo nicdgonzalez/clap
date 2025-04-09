@@ -12,6 +12,25 @@ __all__ = (
 )
 
 
+class RawOption(NamedTuple):
+    key: str
+    value: str
+
+    def __eq__(self, o: object) -> bool:
+        if isinstance(o, RawOption):
+            return self.key == o.key and self.value == o.value
+
+        return NotImplemented
+
+    def __ne__(self, o: object) -> bool:
+        result = operator.eq(self, o)
+        return NotImplemented if result is NotImplemented else not result
+
+
+class RawArgument(str):
+    pass
+
+
 class TokenKind(enum.IntEnum):
     LONG = enum.auto()
     SHORT = enum.auto()
@@ -36,25 +55,6 @@ class TokenKind(enum.IntEnum):
                 raise NotImplementedError
         else:
             return cls.ARGUMENT
-
-
-class RawOption(NamedTuple):
-    key: str
-    value: str
-
-    def __eq__(self, o: object) -> bool:
-        if isinstance(o, RawOption):
-            return self.key == o.key and self.value == o.value
-
-        return NotImplemented
-
-    def __ne__(self, o: object) -> bool:
-        result = operator.eq(self, o)
-        return NotImplemented if result is NotImplemented else not result
-
-
-class RawArgument(str):
-    pass
 
 
 class Token:
@@ -84,7 +84,7 @@ class Token:
 
     def is_argument(self) -> bool:
         # All tokens are technically arguments; this is just a convenience
-        # method so you don't have to import `TokenKind` yourself.
+        # method so you don't have to import `TokenKind` to make this check.
         return self.kind == TokenKind.ARGUMENT
 
     def as_long_option(self) -> RawOption:
@@ -105,7 +105,8 @@ class Token:
         options: list[RawOption] = []
 
         # Short options are stackable (e.g., `-abc` is OK). Here, we break
-        # apart the stack to return each option individually.
+        # apart the stack to return each option individually, which will make
+        # the parsing step simpler.
         for index, key in enumerate(remainder):
             try:
                 next_char = remainder[index + 1]
@@ -124,7 +125,6 @@ class Token:
                 #
                 # E.g., this is okay: `-abc123`; but this is not: `-c123ba`.
                 value = remainder[slice(index + 1, None, 1)]
-                print(value)
 
                 if not value.isnumeric():
                     raise ArgumentError(
@@ -149,7 +149,7 @@ class Token:
 
         return tuple(options)
 
-    def as_argument(self) -> RawArgument:
+    def as_argument(self) -> str:
         return RawArgument(self.literal)
 
     def __eq__(self, o: object) -> bool:

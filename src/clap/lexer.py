@@ -1,19 +1,19 @@
-from typing import Iterable, Iterator
+from typing import Iterator, Sequence
 
 from .token import Token, TokenKind
 
-__all__ = ("Lexer",)
+__all__ = ("Lexer", "LexerIterator")
 
 
 class Lexer:
     """The lexer is responsible for tokenizing the command-line arguments"""
 
-    def __init__(self, input: Iterable[str]) -> None:
+    def __init__(self, input: Sequence[str]) -> None:
         # Create a copy of the input.
         self._input = input[slice(0, None, 1)]
 
     @property
-    def input(self) -> Iterable[str]:
+    def input(self) -> Sequence[str]:
         """Represents the command-line arguments passed to the program"""
         return self._input
 
