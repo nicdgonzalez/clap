@@ -1,9 +1,40 @@
-"""
-# TODO: 2025-04-11
+from __future__ import annotations
 
-- ~~Fix all mypy errors.~~
-- Implement `Extension`.
-- Implement `convert` in `abc.SupportsConvert`.
-- Add tests, examples, documentation.
-- Refactor to make code cleaner wherever possible.
-"""
+from typing import TYPE_CHECKING, Any, MutableMapping
+
+from .abc import SupportsSubcommands
+from .group import Group
+from .subcommand import Subcommand
+
+if TYPE_CHECKING:
+    from .application import Application
+
+
+def add_member_subcommands(parent: SupportsSubcommands, /) -> None:
+    members = tuple(parent.__class__.__dict__.values())
+
+    for subcommand in members:
+        if not isinstance(subcommand, (Group, Subcommand)):
+            continue
+
+        subcommand.parent = parent
+
+        # Decorators on class methods wrap around an unbound method;
+        # we need to set the `__self__` attribute manually.
+        if not hasattr(subcommand.callback, "__self__"):
+            setattr(subcommand.callback, "__self__", parent)
+
+        parent.add_subcommand(subcommand)
+
+
+class Extension(SupportsSubcommands):
+    def __new__(cls, *args: Any, **kwargs: Any) -> "Extension":
+        this = super().__cls__(cls)
+        this._subcommands: MutableMapping[
+            str, Group[Any] | Subcommand[Any]
+        ] = {}
+        add_member_subcommands(this)
+        return this
+
+    def __init__(self, app: Application, /, *args: Any, **kwargs: Any) -> None:
+        pass

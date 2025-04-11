@@ -1,6 +1,7 @@
 from typing import Callable
 
 from .abc import SupportsConvert
+from .attributes import MetaVar
 from .sentinel import MISSING
 
 
@@ -13,11 +14,13 @@ class PositionalArgument[T](SupportsConvert[T]):
         brief: str,
         target_type: Callable[[str], T],
         default_value: T = MISSING,
+        metavar: MetaVar | None = None,
     ) -> None:
         self._name = name
         self._brief = brief
         self._target_type = target_type
         self._default_value = default_value
+        self.metavar = metavar or self.name
 
     @property
     def name(self) -> str:

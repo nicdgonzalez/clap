@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import types
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -32,7 +33,7 @@ class OptionAlreadyExistsError(ClapException):
         parent_name = parent.__class__.__name__
 
         super().__init__(
-            f"command {option_name!r} already exists for {parent_name!r}"
+            f"option {option_name!r} already exists for {parent_name!r}"
         )
 
 
@@ -42,3 +43,12 @@ class ArgumentError(ClapException):
 
 class InvalidSignatureError(ClapException):
     pass
+
+
+class MissingSetupFunctionError(ClapException):
+    def __init__(self, module: types.ModuleType, *args: object) -> None:
+        name = module.__name__
+
+        super().__init__(
+            f"module {name!r} is missing the required function 'setup'"
+        )

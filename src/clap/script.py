@@ -66,6 +66,10 @@ class Script[T](Argument, SupportsOptions, SupportsPositionalArguments):
         return self._name
 
     @property
+    def qualified_name(self) -> str:
+        return self._name
+
+    @property
     def brief(self) -> str:
         return self._brief
 
@@ -85,15 +89,16 @@ class Script[T](Argument, SupportsOptions, SupportsPositionalArguments):
 
     @property
     def usage(self) -> Usage:
-        usage = (
-            Usage(self.name)
-            .add_argument(Arg(name="options", required=False))
-            .add_argument(Arg(name="--", required=False))
-        )
+        usage = Usage(self.name)
+
+        for option in self.options:
+            if option.default_value is MISSING:
+                usage.add_argument(Arg(name=f"--{option.name}", required=None))
+                usage.add_argument(Arg(name=option.metavar, required=True))
 
         for argument in self.positional_arguments:
             required = argument.default_value is MISSING
-            usage.add_argument(Arg(name=argument.name, required=required))
+            usage.add_argument(Arg(name=argument.metavar, required=required))
 
         return usage
 

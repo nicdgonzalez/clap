@@ -217,8 +217,9 @@ def _handle_token_argument(
             except IndexError as exc:
                 expected = len(ctx.command.positional_arguments)
                 actual = len(ctx.result.args) + 1
+                plural = "" if expected == 1 else "s"
                 raise ArgumentError(
-                    f"expected {expected} arguments, got {actual}"
+                    f"expected {expected} argument{plural}, got {actual}"
                 ) from exc
             else:
                 # Append to arguments if there is enough room.

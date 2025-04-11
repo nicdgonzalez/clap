@@ -1,9 +1,12 @@
+import importlib
 import os
 import sys
 import textwrap
 from typing import Any, Callable, MutableMapping, Sequence
 
 from .abc import Argument, SupportsOptions, SupportsSubcommands
+from .errors import MissingSetupFunctionError
+from .extension import Extension, add_member_subcommands
 from .group import Group
 from .help import Arg, HelpFormatter, HelpMessage, Item, Section, Text, Usage
 from .option import DEFAULT_HELP, Option
@@ -13,6 +16,26 @@ from .subcommand import Subcommand
 
 
 class Application(Argument, SupportsOptions, SupportsSubcommands):
+    """Represents the project itself.
+
+    You can think of it like this object represents `sys.argv[0]`. This is the
+    base command of a project that uses multiple subcommands to perform tasks.
+
+    This class implements the `Argument`, `SupportsOptions`,
+    `SupportsSubcommands`, and `SupportsHelpMessage` protocols.
+
+    Parameters
+    ----------
+    name
+        The program name. Defaults to the basename of `sys.argv[0]`.
+    brief
+        A one-line summary of this application.
+    description
+        A paragraph explaining the application in more detail.
+    after_help
+        Space to add an arbitrary message to the end of the help message.
+    """
+
     def __init__(
         self,
         *,
@@ -29,6 +52,7 @@ class Application(Argument, SupportsOptions, SupportsSubcommands):
         self._subcommands: dict[str, Group[Any] | Subcommand[Any]] = {}
         self._options: dict[str, Option[Any]] = {}
         self.add_option(DEFAULT_HELP)
+        add_member_subcommands(self)
 
     @property
     def name(self) -> str:
@@ -55,6 +79,19 @@ class Application(Argument, SupportsOptions, SupportsSubcommands):
     def __call__(self, *args: Any, **kwargs: Any) -> None:
         help_message = self.generate_help_message(HelpFormatter())
         print(help_message)
+
+    def extend(self, name: str, package: str | None = None) -> None:
+        module = importlib.import_module(name, package=package)
+        setup_fn = getattr(module, "setup", None)
+
+        if setup_fn is None:
+            raise MissingSetupFunctionError(module=module)
+
+        _ = setup_fn(app=self)
+
+    def add_extension(self, extension: Extension, /) -> None:
+        for subcommand in extension.subcommands:
+            self.add_subcommand(subcommand)
 
     def subcommand[T, **P](
         self,
@@ -119,10 +156,8 @@ class Application(Argument, SupportsOptions, SupportsSubcommands):
         for option in self.options:
             if option.default_value is MISSING:
                 usage.add_argument(Arg(name=f"--{option.name}", required=None))
-                usage.add_argument(Arg(name="value", required=True))
+                usage.add_argument(Arg(name=option.metavar, required=True))
 
-        usage.add_argument(Arg(name="options", required=False))
-        usage.add_argument(Arg(name="--", required=False))
         usage.add_argument(Arg(name="command", required=True))
 
         return usage

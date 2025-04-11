@@ -17,7 +17,7 @@ from colorize import Colorize
 
 from . import attributes
 from .abc import Argument, SupportsOptions, SupportsPositionalArguments
-from .attributes import Rename, Short
+from .attributes import MetaVar, Rename, Short
 from .docstring import Docstring, parse_doc
 from .help import Arg as Arg
 from .help import HelpFormatter, HelpMessage, Item, Section, Text, Usage
@@ -77,6 +77,8 @@ def parse_parameters(
             else MISSING
         )
 
+        metavar: MetaVar | None = None
+
         match parameter.kind:
             case (
                 inspect.Parameter.POSITIONAL_ONLY
@@ -90,6 +92,8 @@ def parse_parameters(
                         match attribute:
                             case Rename():
                                 name = str(attribute)
+                            case MetaVar():
+                                metavar = attribute
                             case _:
                                 pass
 
@@ -98,6 +102,7 @@ def parse_parameters(
                     brief=brief,
                     target_type=target_type or str,
                     default_value=default_value,
+                    metavar=metavar,
                 )
                 arguments.append(argument)
             case (
@@ -117,6 +122,8 @@ def parse_parameters(
                                 short = attribute
                             case Rename():
                                 name = str(attribute)
+                            case MetaVar():
+                                metavar = attribute
                             case _:
                                 pass
 
@@ -126,6 +133,7 @@ def parse_parameters(
                     target_type=target_type or bool,
                     default_value=default_value,
                     short=short,
+                    metavar=metavar,
                 )
                 options[name] = option
             case _:
@@ -268,12 +276,7 @@ class Subcommand[T](Argument, SupportsOptions, SupportsPositionalArguments):
         for option in self.options:
             if option.default_value is MISSING:
                 usage.add_argument(Arg(name=f"--{option.name}", required=None))
-                usage.add_argument(Arg(name="value", required=True))
-
-        usage.add_argument(Arg(name="options", required=False))
-
-        if len(self.positional_arguments) > 0:
-            usage.add_argument(Arg(name="--", required=False))
+                usage.add_argument(Arg(name=option.metavar, required=True))
 
         for argument in self.positional_arguments:
             required = argument.default_value is MISSING
@@ -283,18 +286,17 @@ class Subcommand[T](Argument, SupportsOptions, SupportsPositionalArguments):
 
     def generate_help_message(self, fmt: HelpFormatter, /) -> str:
         arguments = Section("Arguments")
-
         for argument in self.positional_arguments:
             arguments.add_item(Item(name=argument.name, brief=argument.brief))
 
         options = Section("Options")
-
         for option in self.options:
             name = f"--{option.name}"
 
             if option.short is not None:
                 name = f"-{option.short}, {name}"
             else:
+                # Add spaces to fill in where the short option would be.
                 name = f"    {name}"
 
             options.add_item(Item(name=name, brief=option.brief))

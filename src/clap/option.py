@@ -1,5 +1,5 @@
 from .abc import SupportsConvert
-from .attributes import Short
+from .attributes import MetaVar, Short
 from .sentinel import MISSING
 
 
@@ -14,12 +14,14 @@ class Option[T](SupportsConvert[T]):
         target_type: type,
         default_value: T = MISSING,
         short: Short | None = None,
+        metavar: MetaVar | None = None,
     ) -> None:
         self._name = name
         self._brief = brief
         self._target_type = target_type
         self._default_value = default_value
         self.short = short
+        self.metavar = metavar or "value"
 
     @property
     def name(self) -> str:

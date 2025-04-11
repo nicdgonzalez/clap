@@ -12,3 +12,7 @@ class Short(str):
 
 class Rename(str):
     pass
+
+
+class MetaVar(str):
+    pass

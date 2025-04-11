@@ -8,7 +8,6 @@ from typing import (
     MutableSequence,
     Protocol,
     Sequence,
-    overload,
     runtime_checkable,
 )
 
@@ -43,14 +42,6 @@ class Argument(Protocol):
         raise NotImplementedError
 
     @property
-    def snake_case(self) -> str:
-        return self.name.replace("-", "_")
-
-    @property
-    def kebab_case(self) -> str:
-        return self.name.replace("_", "-")
-
-    @property
     def brief(self) -> str:
         """A short summary explaining the argument's purpose."""
         raise NotImplementedError
@@ -60,6 +51,10 @@ class Argument(Protocol):
 class SupportsSubcommands(Protocol):
     """A protocol that defines the common operations for command-line
     arguments that perform specific tasks within a single command framework.
+
+    Arguments cannot/should not support both subcommands and positional
+    arguments. It is ambiguous whether the user typo'd a subcommand or
+    intended to pass in a positional argument.
 
     Attributes
     ----------
@@ -264,45 +259,67 @@ class SupportsOptions(Protocol):
 
 @runtime_checkable
 class SupportsPositionalArguments(Protocol):
+    """A protocol that defines the common operations for command-line
+    arguments that perform an action based on dynamic values.
+
+    Arguments cannot/should not support both subcommands and positional
+    arguments. It is ambiguous whether the user typo'd a subcommand or
+    intended to pass in a positional argument.
+
+    Attributes
+    ----------
+    positional_arguments
+    """
+
     @property
     def positional_arguments(self) -> MutableSequence[PositionalArgument[Any]]:
+        """A collection of positional arguments for this argument."""
         raise NotImplementedError
 
     def add_positional_argument(
-        self, argument: PositionalArgument[Any], /
+        self,
+        argument: PositionalArgument[Any],
+        /,
     ) -> None:
+        """Register a new positional argument.
+
+        Parameters
+        ----------
+        argument
+            The argument to register.
+        """
         self.positional_arguments.append(argument)
 
-    @overload
     def remove_positional_argument(
         self,
         name: str,
         /,
-    ) -> PositionalArgument[Any] | None: ...
-
-    @overload
-    def remove_positional_argument(
-        self,
-        index: int,
-        /,
-    ) -> PositionalArgument[Any] | None: ...
-
-    def remove_positional_argument(
-        self,
-        query: str | int,
-        /,
     ) -> PositionalArgument[Any] | None:
-        match query:
+        """Unregister a positional argument.
+
+        Parameters
+        ----------
+        name
+            The name of the positional argument to remove.
+
+        Returns
+        -------
+        PositionalArgument
+            The removed positional argument.
+        None
+            No positional argument matched the given `name`.
+        """
+        match name:
             case int():
-                return self.positional_arguments.pop(query)
+                return self.positional_arguments.pop(name)
             case str():
                 for index, argument in enumerate(self.positional_arguments):
-                    if query != argument.name:
+                    if name != argument.name:
                         continue
 
                     return self.positional_arguments.pop(index)
             case _:
-                raise TypeError(f"expected str or int, not {type(query)}")
+                raise TypeError(f"expected str or int, not {type(name)}")
 
         return None
 
@@ -327,9 +344,15 @@ class SupportsConvert[T](Protocol):
         argument
             The value to convert.
 
+        Returns
+        -------
+        T
+            An instance of `self.target_type`.
+
         Raises
         ------
-        TODO
+        ArgumentError
+            Unable to transform `argument` into `T`.
         """
 
         return convert(
@@ -342,8 +365,20 @@ class SupportsConvert[T](Protocol):
 @runtime_checkable
 class SupportsHelpMessage(Protocol):
     @property
+    def qualified_name(self) -> str:
+        raise NotImplementedError
+
+    @property
     def usage(self) -> Usage:
+        """The message to display for the usage section of the help message."""
         raise NotImplementedError
 
     def generate_help_message(self, fmt: HelpFormatter) -> str:
+        """Get the help message to display to the user.
+
+        Parameters
+        ----------
+        fmt
+            Customize how the help message is created.
+        """
         raise NotImplementedError
