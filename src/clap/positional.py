@@ -4,7 +4,7 @@ from .abc import SupportsConvert
 from .sentinel import MISSING
 
 
-class Argument[T](SupportsConvert[T]):
+class PositionalArgument[T](SupportsConvert[T]):
     """Represents a positional-only command-line argument"""
 
     def __init__(

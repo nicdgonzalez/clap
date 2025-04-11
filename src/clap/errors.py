@@ -3,18 +3,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .abc import SupportsCommands, SupportsOptions
+    from .abc import SupportsOptions, SupportsSubcommands
 
 
 class ClapException(Exception):
     """The base exception for all clap-related exceptions"""
 
 
-class CommandAlreadyExistsError(ClapException):
+class SubcommandAlreadyExistsError(ClapException):
     """There was a problem adding a command to the parser"""
 
     def __init__(
-        self, parent: SupportsCommands, command_name: str, *args: object
+        self, parent: SupportsSubcommands, command_name: str, *args: object
     ) -> None:
         parent_name = parent.__class__.__name__
 
@@ -40,10 +40,5 @@ class ArgumentError(ClapException):
     """Represents an error that will be shown to the end user"""
 
 
-class CommandError(ClapException):
+class InvalidSignatureError(ClapException):
     pass
-
-
-class InvalidCallbackError(CommandError):
-    def __init__(self, *args: object) -> None:
-        super().__init__("expected callback to be callable")

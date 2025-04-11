@@ -3,27 +3,16 @@ import sys
 import textwrap
 from typing import Any, Callable, MutableMapping, Sequence
 
-from .abc import SupportsCommands, SupportsHelpMessage, SupportsOptions
-from .command import Command
-from .errors import (
-    ArgumentError,
-    CommandAlreadyExistsError,
-    OptionAlreadyExistsError,
-)
-from .help import (
-    Argument,
-    HelpFormatter,
-    HelpMessage,
-    Item,
-    Section,
-    Text,
-    Usage,
-)
+from .abc import Argument, SupportsOptions, SupportsSubcommands
+from .group import Group
+from .help import Arg, HelpFormatter, HelpMessage, Item, Section, Text, Usage
 from .option import DEFAULT_HELP, Option
-from .parser import Parser
+from .parser import parse
+from .sentinel import MISSING
+from .subcommand import Subcommand
 
 
-class Application(SupportsOptions, SupportsCommands):
+class Application(Argument, SupportsOptions, SupportsSubcommands):
     def __init__(
         self,
         *,
@@ -37,7 +26,7 @@ class Application(SupportsOptions, SupportsCommands):
         self.description = textwrap.dedent(description).strip()
         self.after_help = after_help.strip()
 
-        self._commands: dict[str, Command[Any]] = {}
+        self._subcommands: dict[str, Group[Any] | Subcommand[Any]] = {}
         self._options: dict[str, Option[Any]] = {}
         self.add_option(DEFAULT_HELP)
 
@@ -54,8 +43,10 @@ class Application(SupportsOptions, SupportsCommands):
         return self._brief
 
     @property
-    def all_commands(self) -> MutableMapping[str, Command[Any]]:
-        return self._commands
+    def all_subcommands(
+        self,
+    ) -> MutableMapping[str, Group[Any] | Subcommand[Any]]:
+        return self._subcommands
 
     @property
     def all_options(self) -> MutableMapping[str, Option[Any]]:
@@ -65,100 +56,81 @@ class Application(SupportsOptions, SupportsCommands):
         help_message = self.generate_help_message(HelpFormatter())
         print(help_message)
 
-    def command[T, **P](
+    def subcommand[T, **P](
         self,
         *args: Any,
         **kwargs: Any,
-    ) -> Callable[[Callable[P, T]], Command[T]]:
-        """Convert a function into a [`Command`][clap.command.Command], and
-        register it to the application.
+    ) -> Callable[[Callable[P, T]], Subcommand[T]]:
+        """A convenience decorator to transform a function into a
+        [`Subcommand`][clap.subcommand.Subcommand] and register it onto
+        the application.
 
         Returns
         -------
         callable
-            The inner function wrapped in a `Command` object.
+            The inner function wrapped in a `Subcommand` object.
 
         See Also
         --------
-        [Command][clap.command.Command] : For valid arguments to this function.
+        [Subcommand][clap.subcommand.Subcommand] : For valid arguments.
         """
 
         kwargs.setdefault("parent", self)
 
-        def wrapper(callback: Callable[P, T]) -> Command[T]:
-            command = Command(callback=callback, **kwargs)
-            self.add_command(command)
+        def wrapper(callback: Callable[P, T]) -> Subcommand[T]:
+            command = Subcommand(callback=callback, **kwargs)
+            self.add_subcommand(command)
             return command
 
         return wrapper
 
-    def add_command(self, command: Command[Any]) -> None:
-        if command.name in self.all_commands.keys():
-            raise CommandAlreadyExistsError(self, command.name)
-
-        self.all_commands[command.name] = command
-
-    def add_option(self, option: Option[Any]) -> None:
-        if option.name in self.all_options.keys():
-            raise OptionAlreadyExistsError(self, option.name)
-
-        self.all_options[option.name] = option
-
-    def run(
+    def group[T, **P](
         self,
-        input: Sequence[str] = sys.argv[slice(1, None, 1)],
-        *,
-        formatter: HelpFormatter = HelpFormatter(),
-    ) -> Any:
-        parser = Parser(app=self)
+        *args: Any,
+        **kwargs: Any,
+    ) -> Callable[[Callable[P, T]], Group[T]]:
+        """A convenience decorator to transform a function into a
+        [`Group`][clap.group.Group] and register it onto
+        the application.
 
-        try:
-            results = parser.parse(input=input)
-        except ArgumentError as exc:
-            print(f"\033[31merror\033[39m: {exc}", file=sys.stderr)
-            sys.exit(1)
+        Returns
+        -------
+        callable
+            The inner function wrapped in a `Group` object.
 
-        ends_with_command = isinstance(results[-1].command, Command)
+        See Also
+        --------
+        [Group][clap.group.Group] : For valid arguments.
+        """
 
-        assert len(results) > 0, len(results)
-        for result in results:
-            if result.kwargs.pop("help", False):
-                assert isinstance(result.command, SupportsHelpMessage)
-                help_message = result.command.generate_help_message(formatter)
-                print(help_message)
-                return None
+        kwargs.setdefault("parent", self)
 
-            if (
-                isinstance(result.command, SupportsCommands)
-                and not result.command.invoke_without_command
-                and ends_with_command
-            ):
-                continue
+        def wrapper(callback: Callable[P, T]) -> Group[T]:
+            group = Group(callback=callback, **kwargs)
+            self.add_subcommand(group)
+            return group
 
-            try:
-                assert callable(result.command)
-                retval: Any = result.command(*result.args, **result.kwargs)
-            except TypeError:  # TODO: Throw a custom error instead.
-                assert isinstance(result.command, SupportsHelpMessage)
-                usage = result.command.usage.render(formatter)
-                print(usage, file=sys.stderr)
-                sys.exit(1)
-
-        return retval
+        return wrapper
 
     @property
     def usage(self) -> Usage:
-        return (
-            Usage(self.name)
-            .add_argument(Argument(name="options", required=False))
-            .add_argument(Argument(name="--", required=False))
-            .add_argument(Argument(name="command", required=True))
-        )
+        usage = Usage(self.name)
+
+        for option in self.options:
+            if option.default_value is MISSING:
+                usage.add_argument(Arg(name=f"--{option.name}", required=None))
+                usage.add_argument(Arg(name="value", required=True))
+
+        usage.add_argument(Arg(name="options", required=False))
+        usage.add_argument(Arg(name="--", required=False))
+        usage.add_argument(Arg(name="command", required=True))
+
+        return usage
 
     def generate_help_message(self, fmt: HelpFormatter, /) -> str:
         commands = Section("Commands")
 
-        for command in self.commands:
+        for command in self.subcommands:
             commands.add_item(Item(name=command.name, brief=command.brief))
 
         options = Section("Options")
@@ -183,3 +155,11 @@ class Application(SupportsOptions, SupportsCommands):
             .add(Text(self.after_help))
             .render(fmt=fmt)
         )
+
+    def run(
+        self,
+        input: Sequence[str] = sys.argv[slice(1, None, 1)],
+        *,
+        formatter: HelpFormatter = HelpFormatter(),
+    ) -> Any:
+        return parse(self, input=input, formatter=formatter)

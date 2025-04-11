@@ -9,7 +9,7 @@ def convert[T](
     *,
     argument: str,
     converter: Callable[[str], T],
-    default: T = MISSING,
+    default_value: T = MISSING,
 ) -> T:
     # TODO: Handle cases where T is a Generic, Literal, Union, etc.
     match get_origin(converter):

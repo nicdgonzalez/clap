@@ -8,3 +8,7 @@ class Short(str):
             raise ValueError("expected short to be a letter")
 
         return c
+
+
+class Rename(str):
+    pass

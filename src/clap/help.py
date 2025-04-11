@@ -119,7 +119,7 @@ class Section(SupportsRender):
 
 
 @dataclasses.dataclass
-class Argument:
+class Arg:
     name: str
     required: bool | None
 
@@ -127,9 +127,9 @@ class Argument:
 class Usage(SupportsRender):
     def __init__(self, command: str, /) -> None:
         self.command = command
-        self.arguments: list[Argument] = []
+        self.arguments: list[Arg] = []
 
-    def add_argument(self, argument: Argument, /) -> "Usage":
+    def add_argument(self, argument: Arg, /) -> "Usage":
         self.arguments.append(argument)
         return self
 
@@ -137,7 +137,7 @@ class Usage(SupportsRender):
         section = (
             Section("Usage", skip_if_empty=False).render(fmt=fmt).rstrip()
         )
-        command = Colorize(self.command).bold().italic()
+        command = Colorize(self.command).bold()
         buffer = f"{section} {command}"
 
         for argument in self.arguments:
