@@ -41,6 +41,10 @@ class ArgumentError(ClapException):
     """Represents an error that will be shown to the end user"""
 
 
+class MissingRequiredArgumentError(ClapException):
+    """Missing value for a required argument."""
+
+
 class InvalidSignatureError(ClapException):
     pass
 
@@ -52,3 +56,7 @@ class MissingSetupFunctionError(ClapException):
         super().__init__(
             f"module {name!r} is missing the required function 'setup'"
         )
+
+
+class UserError(ClapException):
+    """Custom exception to be shown to the user via the command-line."""

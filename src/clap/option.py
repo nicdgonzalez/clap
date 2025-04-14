@@ -1,3 +1,5 @@
+import pathlib
+
 from .abc import SupportsConvert
 from .attributes import MetaVar, Short
 from .sentinel import MISSING
@@ -29,7 +31,18 @@ class Option[T](SupportsConvert[T]):
 
     @property
     def brief(self) -> str:
-        return self._brief
+        if self._target_type is bool or self._default_value is MISSING:
+            return self._brief
+
+        match self._default_value:
+            case pathlib.Path():
+                default = self._default_value.as_posix().replace(
+                    pathlib.Path.cwd().as_posix(), "."
+                )
+            case _:
+                default = self._default_value
+
+        return self._brief + f" [{default}]"
 
     @property
     def target_type(self) -> type:

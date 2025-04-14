@@ -14,12 +14,11 @@ from .abc import (
     SupportsPositionalArguments,
     SupportsSubcommands,
 )
-from .errors import ArgumentError
+from .errors import ArgumentError, MissingRequiredArgumentError, UserError
 from .help import HelpFormatter
 from .lexer import Lexer, LexerIterator
 from .option import Option
 from .positional import PositionalArgument
-from .subcommand import Subcommand
 from .token import Token, TokenKind
 from .util import snake_case
 
@@ -58,8 +57,6 @@ def parse(
         print(Colorize("error").red() + ":", exc, file=sys.stderr)
         sys.exit(1)
 
-    ends_with_command = isinstance(results[-1].command, Subcommand)
-
     assert len(results) > 0, len(results)
     for result in results:
         if result.kwargs.pop("help", False):
@@ -71,14 +68,16 @@ def parse(
         if (
             isinstance(result.command, SupportsSubcommands)
             and not result.command.invoke_without_subcommand
-            and ends_with_command
         ):
             continue
 
         try:
             assert callable(result.command)
             retval: Any = result.command(*result.args, **result.kwargs)
-        except TypeError:  # TODO: Throw a custom error instead.
+        except UserError as exc:
+            print(Colorize("error").red() + ":", exc, file=sys.stderr)
+            sys.exit(1)
+        except MissingRequiredArgumentError:
             assert isinstance(result.command, SupportsHelpMessage)
             usage = result.command.usage.render(formatter)
             print(usage, file=sys.stderr)

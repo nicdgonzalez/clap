@@ -1,1 +1,3 @@
+# Application
+
 ::: clap.application

@@ -62,6 +62,7 @@ error: expected 1 argument, got 2
 from .application import Application
 from .attributes import MetaVar, Rename, Short
 from .decorators import group, script, subcommand
+from .errors import UserError
 from .extension import Extension
 from .help import HelpFormatter
 
@@ -72,6 +73,7 @@ __all__ = (
     "MetaVar",
     "Rename",
     "Short",
+    "UserError",
     "group",
     "script",
     "subcommand",

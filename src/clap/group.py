@@ -210,7 +210,7 @@ class Group[T](Argument, SupportsSubcommands, SupportsOptions):
         return usage
 
     def generate_help_message(self, fmt: HelpFormatter, /) -> str:
-        arguments = Section("Arguments")
+        arguments = Section("Subcommands")
 
         for subcommand in self.subcommands:
             arguments.add_item(

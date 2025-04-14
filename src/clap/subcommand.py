@@ -280,7 +280,7 @@ class Subcommand[T](Argument, SupportsOptions, SupportsPositionalArguments):
 
         for argument in self.positional_arguments:
             required = argument.default_value is MISSING
-            usage.add_argument(Arg(name=argument.name, required=required))
+            usage.add_argument(Arg(name=argument.metavar, required=required))
 
         return usage
 
