@@ -3,46 +3,58 @@ import os
 import sys
 from typing import Any, Callable, MutableMapping, MutableSequence, Sequence
 
-from .abc import Argument, SupportsOptions, SupportsPositionalArguments
+from .abc import (
+    Argument,
+    SupportsHelpMessage,
+    SupportsOptions,
+    SupportsPositionalArguments,
+)
 from .docstring import parse_doc
-from .help import Arg, HelpFormatter, HelpMessage, Item, Section, Text, Usage
+from .help import HelpFormatter, HelpMessage, Text
 from .option import DEFAULT_HELP, Option
 from .parser import parse
 from .positional import PositionalArgument
-from .sentinel import MISSING
-from .subcommand import parse_parameters
+from .subcommand import _parse_parameters
 
 __all__ = ("Script",)
 
 
-class Script[T](Argument, SupportsOptions, SupportsPositionalArguments):
+# TODO: Documentation.
+class Script[T](
+    Argument, SupportsOptions, SupportsPositionalArguments, SupportsHelpMessage
+):
     def __init__(
         self,
         *,
         callback: Callable[..., T],
         name: str = os.path.basename(sys.argv[0]),
-        brief: str | None = None,
-        description: str | None = None,
-        after_help: str | None = None,
+        brief: str = "",
+        description: str = "",
+        after_help: str = "",
         positional_arguments: MutableSequence[PositionalArgument[Any]]
         | None = None,
         options: MutableMapping[str, Option[Any]] | None = None,
     ) -> None:
         self.callback = callback
 
-        if name is None:
+        if name == "":
             assert hasattr(self.callback, "__name__")
             name = self.callback.__name__
-
         self._name = name
 
         parsed_doc = parse_doc(inspect.getdoc(self.callback))
 
-        self._brief = brief or parsed_doc["short_summary"] or ""
-        self.description = description or parsed_doc["extended_summary"] or ""
+        if brief == "":
+            brief = parsed_doc["short_summary"] or ""
+        self._brief = brief
+
+        if description == "":
+            description = parsed_doc["extended_summary"] or ""
+        self._description = description
+
         self.after_help = after_help
 
-        parsed_params = parse_parameters(
+        parsed_params = _parse_parameters(
             fn=self.callback,
             doc=parsed_doc,
         )
@@ -74,6 +86,10 @@ class Script[T](Argument, SupportsOptions, SupportsPositionalArguments):
         return self._brief
 
     @property
+    def description(self) -> str:
+        return self._description
+
+    @property
     def all_options(self) -> MutableMapping[str, Option[Any]]:
         return self._options
 
@@ -82,53 +98,17 @@ class Script[T](Argument, SupportsOptions, SupportsPositionalArguments):
         return self._positional_arguments
 
     def __call__(self, *args: object, **kwargs: object) -> T:
-        if hasattr(self.callback, "__self__"):
-            return self.callback(self.callback.__self__, *args, **kwargs)
-        else:
-            return self.callback(*args, **kwargs)
+        # I don't think it makes sense for the main function to be a method...
+        #
+        # if hasattr(self.callback, "__self__"):
+        #     return self.callback(self.callback.__self__, *args, **kwargs)
+        # else:
+        #     return self.callback(*args, **kwargs)
+        return self.callback(*args, **kwargs)
 
-    @property
-    def usage(self) -> Usage:
-        usage = Usage(self.name)
-
-        for option in self.options:
-            if option.default_value is MISSING:
-                usage.add_argument(Arg(name=f"--{option.name}", required=None))
-                usage.add_argument(Arg(name=option.metavar, required=True))
-
-        for argument in self.positional_arguments:
-            required = argument.default_value is MISSING
-            usage.add_argument(Arg(name=argument.metavar, required=required))
-
-        return usage
-
-    def generate_help_message(self, fmt: HelpFormatter, /) -> str:
-        arguments = Section("Arguments")
-
-        for argument in self.positional_arguments:
-            arguments.add_item(Item(name=argument.name, brief=argument.brief))
-
-        options = Section("Options")
-
-        for option in self.options:
-            name = f"--{option.name}"
-
-            if option.short is not None:
-                name = f"-{option.short}, {name}"
-            else:
-                name = f"    {name}"
-
-            options.add_item(Item(name=name, brief=option.brief))
-
-        return (
-            HelpMessage()
-            .add(Text(self.brief))
-            .add(Text(self.description))
-            .add(self.usage)
-            .add(arguments)
-            .add(options)
-            .render(fmt=fmt)
-        )
+    def get_help_message(self) -> HelpMessage:
+        help_message = SupportsHelpMessage.get_help_message(self)
+        return help_message.add(Text(self.after_help))
 
     def run(
         self,

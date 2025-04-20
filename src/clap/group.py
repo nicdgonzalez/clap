@@ -1,14 +1,11 @@
 import inspect
 from typing import Any, Callable, MutableMapping, MutableSequence
 
-from colorize import Colorize
-
 from .abc import Argument, SupportsOptions, SupportsSubcommands
 from .docstring import parse_doc
 from .errors import InvalidSignatureError
-from .help import Arg, HelpFormatter, HelpMessage, Item, Section, Text, Usage
 from .option import DEFAULT_HELP, Option
-from .subcommand import Subcommand, parse_parameters
+from .subcommand import Subcommand, _parse_parameters
 
 
 class Group[T](Argument, SupportsSubcommands, SupportsOptions):
@@ -50,9 +47,9 @@ class Group[T](Argument, SupportsSubcommands, SupportsOptions):
         self,
         *,
         callback: Callable[..., T],
-        name: str | None = None,
-        brief: str | None = None,
-        description: str | None = None,
+        name: str = "",
+        brief: str = "",
+        description: str = "",
         aliases: MutableSequence[str] | None = None,
         subcommands: MutableMapping[str, "Group[Any]" | Subcommand[Any]]
         | None = None,
@@ -62,19 +59,24 @@ class Group[T](Argument, SupportsSubcommands, SupportsOptions):
     ) -> None:
         self.callback = callback
 
-        if name is None:
+        if name == "":
             assert hasattr(self.callback, "__name__")
             name = self.callback.__name__
-
         self._name = name
 
         parsed_doc = parse_doc(inspect.getdoc(self.callback))
 
-        self._brief = brief or parsed_doc["short_summary"] or ""
-        self.description = description or parsed_doc["extended_summary"] or ""
+        if brief == "":
+            brief = parsed_doc["short_summary"] or ""
+        self._brief = brief
+
+        if description == "":
+            description = parsed_doc["extended_summary"] or ""
+        self.description = description
+
         self.aliases = aliases if aliases is not None else ()
 
-        parsed_params = parse_parameters(
+        parsed_params = _parse_parameters(
             fn=self.callback,
             doc=parsed_doc,
         )
@@ -189,52 +191,3 @@ class Group[T](Argument, SupportsSubcommands, SupportsOptions):
             return self.callback(self.callback.__self__, *args, **kwargs)
         else:
             return self.callback(*args, **kwargs)
-
-    @property
-    def usage(self) -> Usage:
-        names = self.qualified_name.split(" ")
-        assert len(names) >= 2  # Should be at least `<parent> <this_command>`
-        program_name = names.pop(0)
-
-        subcommand = str(Colorize(names.pop(0)).italic())
-        names.append(subcommand)
-
-        usage = (
-            Usage(program_name)
-            .add_argument(Arg(name=" ".join(names), required=None))
-            .add_argument(Arg(name="options", required=False))
-            .add_argument(Arg(name="--", required=False))
-            .add_argument(Arg(name="command", required=True))
-        )
-
-        return usage
-
-    def generate_help_message(self, fmt: HelpFormatter, /) -> str:
-        arguments = Section("Subcommands")
-
-        for subcommand in self.subcommands:
-            arguments.add_item(
-                Item(name=subcommand.name, brief=subcommand.brief)
-            )
-
-        options = Section("Options")
-
-        for option in self.options:
-            name = f"--{option.name}"
-
-            if option.short is not None:
-                name = f"-{option.short}, {name}"
-            else:
-                name = f"    {name}"
-
-            options.add_item(Item(name=name, brief=option.brief))
-
-        return (
-            HelpMessage()
-            .add(Text(self.brief))
-            .add(Text(self.description))
-            .add(self.usage)
-            .add(arguments)
-            .add(options)
-            .render(fmt=fmt)
-        )

@@ -19,6 +19,7 @@ from .help import HelpFormatter
 from .lexer import Lexer, LexerIterator
 from .option import Option
 from .positional import PositionalArgument
+from .sentinel import MISSING
 from .token import Token, TokenKind
 from .util import snake_case
 
@@ -44,6 +45,7 @@ class ParserContext:
     buffer: list[ParsedArgs]
 
 
+# TODO: Documentation.
 def parse(
     app: Application | Script[Any],
     /,
@@ -61,7 +63,7 @@ def parse(
     for result in results:
         if result.kwargs.pop("help", False):
             assert isinstance(result.command, SupportsHelpMessage)
-            help_message = result.command.generate_help_message(formatter)
+            help_message = result.command.get_help_message().render(formatter)
             print(help_message)
             return None
 
@@ -71,16 +73,42 @@ def parse(
         ):
             continue
 
+        # Ensure all arguments are accounted for.
+        try:
+            assert isinstance(result.command, SupportsOptions)
+            required_args_count = len(
+                tuple(
+                    filter(
+                        lambda a: a.default_value is MISSING,
+                        (
+                            result.command.positional_arguments
+                            if hasattr(result.command, "positional_arguments")
+                            else ()
+                        ),
+                    )
+                )
+            )
+
+            if len(result.args) < required_args_count:
+                raise MissingRequiredArgumentError()
+
+            for option in result.command.options:
+                if (
+                    option.default_value is MISSING
+                    and snake_case(option.name) not in result.kwargs.keys()
+                ):
+                    raise MissingRequiredArgumentError()
+        except MissingRequiredArgumentError:
+            assert isinstance(result.command, SupportsHelpMessage)
+            usage = result.command.usage.render(formatter)
+            print(usage, file=sys.stderr)
+            sys.exit(1)
+
         try:
             assert callable(result.command)
             retval: Any = result.command(*result.args, **result.kwargs)
         except UserError as exc:
             print(Colorize("error").red() + ":", exc, file=sys.stderr)
-            sys.exit(1)
-        except MissingRequiredArgumentError:
-            assert isinstance(result.command, SupportsHelpMessage)
-            usage = result.command.usage.render(formatter)
-            print(usage, file=sys.stderr)
             sys.exit(1)
 
     return retval
@@ -104,7 +132,7 @@ def _parse_app(
         next_token = cast(LexerIterator, tokens).peek()
         _handle_token(ctx=ctx, token=token, next_token=next_token)
 
-    # Save the state of the current command.
+    # Don't forget to save the state of the current command as well.
     ctx.buffer.append(ctx.result)
 
     return ctx.buffer

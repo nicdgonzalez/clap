@@ -14,8 +14,13 @@ class HelpFormatter:
         indent: int = 2,
         placeholder: str = "[...]",
     ) -> None:
-        terminal_size = os.get_terminal_size()
-        self.width = min(terminal_size.columns, width)
+        try:
+            terminal_size = os.get_terminal_size()
+            columns = terminal_size.columns
+        except OSError:
+            columns = 80
+
+        self.width = min(columns, width)
         self.name_width = name_width if name_width != -1 else self.width // 4
         self.indent = indent
         self.placeholder = placeholder
@@ -125,8 +130,8 @@ class Arg:
 
 
 class Usage(SupportsRender):
-    def __init__(self, command: str, /) -> None:
-        self.command = command
+    def __init__(self, program_name: str, /) -> None:
+        self.program_name = program_name
         self.arguments: list[Arg] = []
 
     def add_argument(self, argument: Arg, /) -> "Usage":
@@ -137,7 +142,7 @@ class Usage(SupportsRender):
         section = (
             Section("Usage", skip_if_empty=False).render(fmt=fmt).rstrip()
         )
-        command = Colorize(self.command).bold()
+        command = Colorize(self.program_name).bold()
         buffer = f"{section} {command}"
 
         for argument in self.arguments:

@@ -1,10 +1,12 @@
 import pathlib
+from typing import Callable
 
 from .abc import SupportsConvert
 from .attributes import MetaVar, Short
 from .sentinel import MISSING
 
 
+# TODO: Documentation.
 class Option[T](SupportsConvert[T]):
     """Represents a command-line flag (e.g., `--verbose`)"""
 
@@ -13,7 +15,7 @@ class Option[T](SupportsConvert[T]):
         *,
         name: str,
         brief: str,
-        target_type: type,
+        target_type: Callable[[str], T],
         default_value: T = MISSING,
         short: Short | None = None,
         metavar: MetaVar | None = None,
@@ -23,7 +25,7 @@ class Option[T](SupportsConvert[T]):
         self._target_type = target_type
         self._default_value = default_value
         self.short = short
-        self.metavar = metavar or "value"
+        self.metavar = metavar or MetaVar("")
 
     @property
     def name(self) -> str:
@@ -34,18 +36,23 @@ class Option[T](SupportsConvert[T]):
         if self._target_type is bool or self._default_value is MISSING:
             return self._brief
 
+        default: str
         match self._default_value:
             case pathlib.Path():
-                default = self._default_value.as_posix().replace(
-                    pathlib.Path.cwd().as_posix(), "."
+                # fmt: off
+                default = (
+                    self._default_value
+                    .as_posix()
+                    .replace(pathlib.Path.cwd().as_posix(), ".")
                 )
+                # fmt: on
             case _:
-                default = self._default_value
+                default = str(self._default_value)
 
         return self._brief + f" [{default}]"
 
     @property
-    def target_type(self) -> type:
+    def target_type(self) -> Callable[[str], T]:
         return self._target_type
 
     @property

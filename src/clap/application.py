@@ -4,18 +4,24 @@ import sys
 import textwrap
 from typing import Any, Callable, MutableMapping, Sequence
 
-from .abc import Argument, SupportsOptions, SupportsSubcommands
+from .abc import (
+    Argument,
+    SupportsHelpMessage,
+    SupportsOptions,
+    SupportsSubcommands,
+)
 from .errors import MissingSetupFunctionError
 from .extension import Extension, add_member_subcommands
 from .group import Group
-from .help import Arg, HelpFormatter, HelpMessage, Item, Section, Text, Usage
+from .help import HelpFormatter, HelpMessage, Text
 from .option import DEFAULT_HELP, Option
 from .parser import parse
-from .sentinel import MISSING
 from .subcommand import Subcommand
 
 
-class Application(Argument, SupportsOptions, SupportsSubcommands):
+class Application(
+    Argument, SupportsOptions, SupportsSubcommands, SupportsHelpMessage
+):
     """Represents the project itself.
 
     You can think of it like this object represents `sys.argv[0]`. This is the
@@ -33,7 +39,7 @@ class Application(Argument, SupportsOptions, SupportsSubcommands):
     description
         A paragraph explaining the application in more detail.
     after_help
-        Space to add an arbitrary message to the end of the help message.
+        Add an arbitrary message to the end of the help text.
     """
 
     def __init__(
@@ -46,7 +52,7 @@ class Application(Argument, SupportsOptions, SupportsSubcommands):
     ) -> None:
         self._name = name.strip()
         self._brief = brief.strip()
-        self.description = textwrap.dedent(description).strip()
+        self._description = textwrap.dedent(description).strip()
         self.after_help = after_help.strip()
 
         self._subcommands: dict[str, Group[Any] | Subcommand[Any]] = {}
@@ -67,6 +73,10 @@ class Application(Argument, SupportsOptions, SupportsSubcommands):
         return self._brief
 
     @property
+    def description(self) -> str:
+        return self._description
+
+    @property
     def all_subcommands(
         self,
     ) -> MutableMapping[str, Group[Any] | Subcommand[Any]]:
@@ -77,8 +87,8 @@ class Application(Argument, SupportsOptions, SupportsSubcommands):
         return self._options
 
     def __call__(self, *args: Any, **kwargs: Any) -> None:
-        help_message = self.generate_help_message(HelpFormatter())
-        print(help_message)
+        help_message = self.get_help_message()
+        print(help_message.render(HelpFormatter()))
 
     def extend(self, name: str, package: str | None = None) -> None:
         module = importlib.import_module(name, package=package)
@@ -149,47 +159,9 @@ class Application(Argument, SupportsOptions, SupportsSubcommands):
 
         return wrapper
 
-    @property
-    def usage(self) -> Usage:
-        usage = Usage(self.name)
-
-        for option in self.options:
-            if option.default_value is MISSING:
-                usage.add_argument(Arg(name=f"--{option.name}", required=None))
-                usage.add_argument(Arg(name=option.metavar, required=True))
-
-        usage.add_argument(Arg(name="command", required=True))
-
-        return usage
-
-    def generate_help_message(self, fmt: HelpFormatter, /) -> str:
-        commands = Section("Commands")
-
-        for command in self.subcommands:
-            commands.add_item(Item(name=command.name, brief=command.brief))
-
-        options = Section("Options")
-
-        for option in self.options:
-            name = f"--{option.name}"
-
-            if option.short is not None:
-                name = f"-{option.short}, {name}"
-            else:
-                name = f"    {name}"
-
-            options.add_item(Item(name=name, brief=option.brief))
-
-        return (
-            HelpMessage()
-            .add(Text(self.brief))
-            .add(Text(self.description))
-            .add(self.usage)
-            .add(commands)
-            .add(options)
-            .add(Text(self.after_help))
-            .render(fmt=fmt)
-        )
+    def get_help_message(self) -> HelpMessage:
+        help_message = SupportsHelpMessage.get_help_message(self)
+        return help_message.add(Text(self.after_help))
 
     def run(
         self,

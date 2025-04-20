@@ -47,7 +47,7 @@ def parse_doc(doc: str | None, /) -> Docstring:
         A dictionary containing section names (in snake_case) as keys,
         and their content broken up into easier-to-use Python objects.
     """
-    # NOTE: `None` indicates that the section was not present.
+    # `None` indicates that the section was not present.
     result: Docstring = {
         "short_summary": None,
         "deprecation_warning": None,

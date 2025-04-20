@@ -6,6 +6,7 @@ from .attributes import MetaVar
 from .sentinel import MISSING
 
 
+# TODO: Documentation.
 class PositionalArgument[T](SupportsConvert[T]):
     """Represents a positional-only command-line argument"""
 
@@ -13,9 +14,9 @@ class PositionalArgument[T](SupportsConvert[T]):
         self,
         name: str,
         brief: str,
+        metavar: MetaVar,
         target_type: Callable[[str], T],
         default_value: T = MISSING,
-        metavar: MetaVar | None = None,
     ) -> None:
         self._name = name
         self._brief = brief
@@ -32,13 +33,18 @@ class PositionalArgument[T](SupportsConvert[T]):
         if self._target_type is bool or self._default_value is MISSING:
             return self._brief
 
+        default: str
         match self._default_value:
             case pathlib.Path():
-                default = self._default_value.as_posix().replace(
-                    pathlib.Path.cwd().as_posix(), "."
+                # fmt: off
+                default = (
+                    self._default_value
+                    .as_posix()
+                    .replace(pathlib.Path.cwd().as_posix(), ".")
                 )
+                # fmt: on
             case _:
-                default = self._default_value
+                default = str(self._default_value)
 
         return self._brief + f" [{default}]"
 

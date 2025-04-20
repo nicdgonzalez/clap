@@ -1,14 +1,14 @@
 import types
 import typing
-from typing import Callable, get_args, get_origin
+from typing import Any, Callable, get_args, get_origin
 
 from .errors import ArgumentError
 from .sentinel import MISSING
 
 
-def is_generic_type(tp: type, /) -> bool:
+def is_generic_type(tp: Callable[[str], Any], /) -> bool:
     return (
-        isinstance(tp, type) and issubclass(tp, typing.Generic)
+        isinstance(tp, type) and issubclass(tp, typing.Generic)  # type: ignore[arg-type]  # noqa: E501
     ) or isinstance(tp, type(list[int]))
 
 
@@ -27,7 +27,8 @@ def convert[T](
 
             for arg in args:
                 if arg is None:
-                    return None if default_value is MISSING else default_value
+                    # At this point, we know `None` is a valid `T`.
+                    return None if default_value is MISSING else default_value  # type: ignore[return-value]  # noqa: E501
 
                 try:
                     value = convert(
@@ -76,14 +77,16 @@ def convert[T](
                 )
         case _:
             if origin is not None and is_generic_type(converter):
-                converter = origin
+                converter = origin  # type: ignore[assignment]
 
             if converter is bool:
                 match argument.lower():
                     case "yes" | "y" | "true" | "t" | "1":
-                        return True
+                        # At this point, we know `True` is a valid `T`.
+                        return True  # type: ignore[return-value]
                     case "no" | "n" | "false" | "f" | "0":
-                        return False
+                        # At this point, we know `False` is a valid `T`.
+                        return False  # type: ignore[return-value]
                     case _:
                         raise ArgumentError(
                             f"unable to convert {argument!r} to 'bool'"

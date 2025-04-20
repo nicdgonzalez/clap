@@ -28,11 +28,12 @@ def add_member_subcommands(parent: SupportsSubcommands, /) -> None:
 
 
 class Extension(SupportsSubcommands):
+    if TYPE_CHECKING:
+        _subcommands: MutableMapping[str, Group[Any] | Subcommand[Any]]
+
     def __new__(cls, *args: Any, **kwargs: Any) -> "Extension":
-        this = super().__cls__(cls)
-        this._subcommands: MutableMapping[
-            str, Group[Any] | Subcommand[Any]
-        ] = {}
+        this = super().__new__(cls)
+        this._subcommands = {}
         add_member_subcommands(this)
         return this
 

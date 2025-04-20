@@ -1,3 +1,4 @@
+# TODO: Documentation.
 class Short(str):
     def __new__(cls, o: object) -> "Short":
         c = super().__new__(cls, o)
@@ -10,9 +11,11 @@ class Short(str):
         return c
 
 
+# TODO: Documentation.
 class Rename(str):
     pass
 
 
+# TODO: Documentation.
 class MetaVar(str):
     pass

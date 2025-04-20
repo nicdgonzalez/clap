@@ -11,12 +11,15 @@ from typing import (
     runtime_checkable,
 )
 
+from colorize import Colorize
+
 from .converter import convert
 from .errors import OptionAlreadyExistsError, SubcommandAlreadyExistsError
+from .help import Arg, HelpMessage, Item, Section, Text, Usage
+from .sentinel import MISSING
 
 if TYPE_CHECKING:
     from .group import Group
-    from .help import HelpFormatter, Usage
     from .option import Option
     from .positional import PositionalArgument
     from .subcommand import Subcommand
@@ -369,11 +372,48 @@ class SupportsHelpMessage(Protocol):
         raise NotImplementedError
 
     @property
-    def usage(self) -> Usage:
-        """The message to display for the usage section of the help message."""
+    def description(self) -> str:
         raise NotImplementedError
 
-    def generate_help_message(self, fmt: HelpFormatter) -> str:
+    @property
+    def usage(self) -> Usage:
+        """The message to display for the usage section of the help message."""
+        names = self.qualified_name.split(" ")
+        assert len(names) > 0, "expected `self.name` in `self.qualified_name`"
+        program_name = names.pop(0)
+        usage = Usage(program_name)
+
+        if len(names) > 0:
+            subcommand = str(Colorize(names.pop(-1)).italic())
+            names.append(subcommand)
+            usage.add_argument(Arg(name=" ".join(names), required=None))
+
+        # Anything implementing `SupportsHelpMessage` should also implement
+        # `SupportsOptions` since `--help` is how you display the help message.
+        assert isinstance(self, SupportsOptions)
+        for option in self.options:
+            if option.default_value is MISSING:
+                usage.add_argument(Arg(name=f"--{option.name}", required=None))
+                usage.add_argument(Arg(name=option.metavar, required=True))
+
+        if isinstance(self, SupportsSubcommands):
+            usage.add_argument(Arg(name="subcommand", required=True))
+        elif isinstance(self, SupportsPositionalArguments):
+            for argument in self.positional_arguments:
+                required = argument.default_value is MISSING
+                usage.add_argument(
+                    Arg(name=argument.metavar, required=required)
+                )
+            else:
+                pass
+        else:
+            raise AssertionError(
+                "unreachable: expected either SupportsSubcommands or SupportsPositionalArguments"  # noqa: E501
+            )
+
+        return usage
+
+    def get_help_message(self) -> HelpMessage:
         """Get the help message to display to the user.
 
         Parameters
@@ -381,4 +421,47 @@ class SupportsHelpMessage(Protocol):
         fmt
             Customize how the help message is created.
         """
-        raise NotImplementedError
+        subcommands = Section("Subcommands")
+
+        if isinstance(self, SupportsSubcommands):
+            for subcommand in self.subcommands:
+                subcommands.add_item(
+                    Item(name=subcommand.name, brief=subcommand.brief)
+                )
+
+        arguments = Section("Arguments")
+
+        if isinstance(self, SupportsPositionalArguments):
+            for argument in self.positional_arguments:
+                arguments.add_item(
+                    Item(name=argument.metavar, brief=argument.brief)
+                )
+
+        options = Section("Options")
+        # Anything implementing `SupportsHelpMessage` should also implement
+        # `SupportsOptions` since `--help` is how you display the help message.
+        assert isinstance(self, SupportsOptions)
+        assert len(self.options) > 0, "expected at least the default help"
+
+        for option in self.options:
+            name = f"--{option.name}"
+
+            if option.short is not None:
+                name = f"-{option.short}, {name}"
+            else:
+                # Add whitespaces where the short option would be so all
+                # long options are aligned.
+                name = f"    {name}"
+
+            options.add_item(Item(name=name, brief=option.brief))
+
+        assert isinstance(self, Argument)
+        return (
+            HelpMessage()
+            .add(Text(self.brief))
+            .add(Text(self.description))
+            .add(self.usage)
+            .add(subcommands)
+            .add(arguments)
+            .add(options)
+        )

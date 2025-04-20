@@ -2,8 +2,9 @@ import clap
 
 
 @clap.script()
-def add(x: int, y: int) -> None:
+def add(x: int, y: int) -> int:
     return x + y
 
 
-add.run()
+if __name__ == "__main__":
+    _ = add.run()
