@@ -184,10 +184,7 @@ def _handle_token_long(
     else:
         value_raw = option_raw.value
 
-    # Convert option name to snake_case.
-    name = snake_case(option_raw.key)
-
-    ctx.result.kwargs[name] = option.convert(value_raw)
+    ctx.result.kwargs[option.parameter_name] = option.convert(value_raw)
 
 
 def _handle_token_short(

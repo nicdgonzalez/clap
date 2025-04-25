@@ -13,6 +13,7 @@ class Option[T](SupportsConvert[T]):
     def __init__(
         self,
         *,
+        parameter_name: str,
         name: str,
         brief: str,
         target_type: Callable[[str], T],
@@ -20,12 +21,17 @@ class Option[T](SupportsConvert[T]):
         short: Short | None = None,
         metavar: MetaVar | None = None,
     ) -> None:
+        self._parameter_name = parameter_name
         self._name = name
         self._brief = brief
         self._target_type = target_type
         self._default_value = default_value
         self.short = short
         self.metavar = metavar or MetaVar("")
+
+    @property
+    def parameter_name(self) -> str:
+        return self._parameter_name
 
     @property
     def name(self) -> str:
@@ -61,6 +67,9 @@ class Option[T](SupportsConvert[T]):
 
 
 DEFAULT_HELP = Option(
+    # This option should be removed before propagating args to callback.
+    # The name for this specific case should not matter.
+    parameter_name="<REMOVE>",
     name="help",
     brief="Display this help message and exit",
     target_type=bool,

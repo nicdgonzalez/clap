@@ -38,4 +38,4 @@ class Extension(SupportsSubcommands):
         return this
 
     def __init__(self, app: Application, /, *args: Any, **kwargs: Any) -> None:
-        pass
+        self.app = app

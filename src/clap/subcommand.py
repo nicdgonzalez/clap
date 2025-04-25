@@ -109,6 +109,7 @@ def _parse_parameters(
                 raise NotImplementedError("not implemented yet")
             case inspect.Parameter.KEYWORD_ONLY:
                 short: Short | None = None
+                rename: Rename | None = None
 
                 if hasattr(tp, "__metadata__"):
                     metadata = getattr(tp, "__metadata__", ())
@@ -120,7 +121,7 @@ def _parse_parameters(
                             case Short():
                                 short = attribute
                             case Rename():
-                                name = str(attribute)
+                                rename = attribute
                             case MetaVar():
                                 metavar = attribute
                             case _:
@@ -129,7 +130,8 @@ def _parse_parameters(
                 metavar = metavar or MetaVar("value")
 
                 option = Option(
-                    name=kebab_case(name),
+                    parameter_name=name,
+                    name=kebab_case(rename or name),
                     brief=brief,
                     target_type=target_type or bool,
                     default_value=default_value,
