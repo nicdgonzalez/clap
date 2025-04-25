@@ -67,9 +67,7 @@ class Option[T](SupportsConvert[T]):
 
 
 DEFAULT_HELP = Option(
-    # This option should be removed before propagating args to callback.
-    # The name for this specific case should not matter.
-    parameter_name="<REMOVE>",
+    parameter_name="help",
     name="help",
     brief="Display this help message and exit",
     target_type=bool,
