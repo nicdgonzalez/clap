@@ -5,8 +5,6 @@ import clap
 
 
 class Submodule(clap.Extension):
-    # TODO: This should print the usage message since
-    # `invoke_without_subcommand` is `False`.
     @clap.group(invoke_without_subcommand=False)
     def submodule(self, *, quiet: bool = False, cached: bool = False) -> None:
         pass
