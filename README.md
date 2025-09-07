@@ -4,12 +4,6 @@
 boilerplate code by letting Clap generate everything for you based on function
 signatures and documentation.
 
-There is a catch: you need to be writing documentation! The more documentation
-you add to your code, the better your command-line interface will be. But don't
-worry—all documentation is optional, Clap doesn't hold it against you
-(which is nice for prototyping); obviously, however, that means you will end up
-with a very bare-bones help message.
-
 ## Installation
 
 **Requires Python 3.13+.**
@@ -22,7 +16,10 @@ python3 -m pip install --upgrade git+https://github.com/nicdgonzalez/clap.git
 
 ### Quickstart
 
-For applications with only a single command, use the `@clap.script` decorator.
+<details>
+<summary>Script</summary>
+
+For programs that expose a single command as the main application.
 
 ```python
 from typing import Annotated
@@ -61,7 +58,7 @@ def main(
 
 
 if __name__ == "__main__":
-    main.run()
+    main.parse_args()
     # The `Script` object is just a wrapper over the function. You can still
     # use it same as before:
     # main(minimum=1, maximum=1000, skip_empty=True)
@@ -69,7 +66,7 @@ if __name__ == "__main__":
 
 The default generated help message:
 
-> [!TIP]
+> 💡 **TIP**
 > Although currently undocumented, the help message format is customizable.
 
 ```console
@@ -91,12 +88,21 @@ Options:
   -h, --help        Display this help message and exit
 ```
 
+</details>
+
+<details>
+<summary>Application</summary>
+
+For programs that expose multiple commands under a single application.
+
 TODO: Show examples for `Application` and `Application`+`Extension`. (For now,
 see the [examples](./examples) directory.)
 
+</details>
+
 ## Limitations
 
-Currently, this library only supports NumPy style docstrings. I recognize that
-this may limit some users who prefer different documentation styles. If you
-have experience with other docstring formats and would like to help, please
-consider contributing!
+Currently, the library only supports NumPy style docstrings. I understand that
+this may limit some users who prefer other documentation styles, so if you have
+experience with other formats and would like to help, please consider opening a
+pull request!
