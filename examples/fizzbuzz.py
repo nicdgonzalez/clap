@@ -60,7 +60,7 @@ def main(
 
 
 if __name__ == "__main__":
-    main.run()
+    main.parse_args()
     # The `Script` object is just a wrapper over the function.
     # You can still use it same as before:
     # main(minimum=1, maximum=1000, skip_empty=True)

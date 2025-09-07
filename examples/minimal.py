@@ -7,4 +7,4 @@ def add(x: int, y: int) -> int:
 
 
 if __name__ == "__main__":
-    _ = add.run()
+    _ = add.parse_args()

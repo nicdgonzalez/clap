@@ -52,4 +52,4 @@ def list_(*, sort: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    app.run()
+    app.parse_args()
