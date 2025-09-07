@@ -19,3 +19,9 @@ class Rename(str):
 # TODO: Documentation.
 class MetaVar(str):
     pass
+
+
+# TODO: Create an attribute `Range`.
+
+# TODO: (Not sure if this would be added as an attribute, but) Add a way to do
+# a "count", like `-vvv` returns `3` instead of `True`.

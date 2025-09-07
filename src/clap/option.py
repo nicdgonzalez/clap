@@ -1,13 +1,15 @@
 import pathlib
-from typing import Callable
+from typing import Callable, TypeVar
 
 from .abc import SupportsConvert
 from .attributes import MetaVar, Short
 from .sentinel import MISSING
 
+T = TypeVar("T")
+
 
 # TODO: Documentation.
-class Option[T](SupportsConvert[T]):
+class Option(SupportsConvert[T]):
     """Represents a command-line flag (e.g., `--verbose`)"""
 
     def __init__(

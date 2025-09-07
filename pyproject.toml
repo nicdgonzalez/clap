@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clap"
-version = "0.2.0"
+version = "0.2.1"
 requires-python = ">=3.13"
-dependencies = ["mkdocstrings[python]>=0.18"]
+dependencies = ["colorize", "mkdocstrings[python]>=0.18"]
 
 [tool.setuptools.package-data]
 "clap" = ["py.typed"]
@@ -20,3 +20,6 @@ line-length = 79
 [tool.ruff.format]
 docstring-code-format = true
 docstring-code-line-length = 80
+
+[tool.uv.sources]
+colorize = { git = "https://github.com/nicdgonzalez/colorize.git" }

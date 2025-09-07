@@ -1,14 +1,37 @@
 import inspect
-from typing import Any, Callable, MutableMapping, MutableSequence
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    MutableMapping,
+    MutableSequence,
+    ParamSpec,
+    TypeVar,
+)
 
-from .abc import Argument, SupportsOptions, SupportsSubcommands
+from .abc import (
+    Argument,
+    SupportsHelpMessage,
+    SupportsOptions,
+    SupportsSubcommands,
+)
 from .docstring import parse_doc
 from .errors import InvalidSignatureError
 from .option import DEFAULT_HELP, Option
 from .subcommand import Subcommand, _parse_parameters
 
+T = TypeVar("T")
+U = TypeVar("U")
+P = ParamSpec("P")
 
-class Group[T](Argument, SupportsSubcommands, SupportsOptions):
+
+class Group(
+    Argument,
+    SupportsSubcommands,
+    SupportsOptions,
+    SupportsHelpMessage,
+    Generic[T],
+):
     """Represents a command-line argument that groups subcommands.
 
     Parameters
@@ -72,7 +95,7 @@ class Group[T](Argument, SupportsSubcommands, SupportsOptions):
 
         if description == "":
             description = parsed_doc["extended_summary"] or ""
-        self.description = description
+        self._description = description
 
         self.aliases = aliases if aliases is not None else ()
 
@@ -109,6 +132,10 @@ class Group[T](Argument, SupportsSubcommands, SupportsOptions):
         return self._brief
 
     @property
+    def description(self) -> str:
+        return self._description
+
+    @property
     def all_options(self) -> MutableMapping[str, Option[Any]]:
         return self._options
 
@@ -126,11 +153,18 @@ class Group[T](Argument, SupportsSubcommands, SupportsOptions):
 
         return f"{parent} {self.name}"
 
+    # TODO: This is not a good name for this feature.
+    # Either change the way this feature works, or change the name.
+    #
+    # Currently, it means the group's body will always run if this is `True`.
+    #
+    # I don't think this is intuitive. It sounds more like this command will
+    # run if the group is the last part of a CLI command.
     @property
     def invoke_without_subcommand(self) -> bool:
         return self._invoke_without_subcommand
 
-    def subcommand[U, **P](
+    def subcommand(
         self,
         *args: Any,
         **kwargs: Any,
@@ -158,7 +192,7 @@ class Group[T](Argument, SupportsSubcommands, SupportsOptions):
 
         return wrapper
 
-    def group[U, **P](
+    def group(
         self,
         *args: Any,
         **kwargs: Any,

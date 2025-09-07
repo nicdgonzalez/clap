@@ -51,7 +51,7 @@ class InvalidSignatureError(ClapException):
 
 class MissingSetupFunctionError(ClapException):
     def __init__(self, module: types.ModuleType, *args: object) -> None:
-        name = module.__name__
+        self.module_name = name = module.__name__
 
         super().__init__(
             f"module {name!r} is missing the required function 'setup'"

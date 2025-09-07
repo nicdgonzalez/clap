@@ -6,8 +6,10 @@ from typing import (
     Annotated,
     Any,
     Callable,
+    Generic,
     MutableMapping,
     MutableSequence,
+    TypeVar,
     get_args,
     get_origin,
     get_type_hints,
@@ -30,8 +32,10 @@ from .util import kebab_case
 if TYPE_CHECKING:
     from .abc import SupportsSubcommands
 
+T = TypeVar("T")
 
-def _is_method(fn: Callable[..., Any], /) -> bool:
+
+def _is_method_with_self(fn: Callable[..., Any], /) -> bool:
     parameters = inspect.signature(obj=fn).parameters
 
     return hasattr(fn, "__self__") or (
@@ -48,7 +52,7 @@ def _parse_parameters(
     parameters = list(inspect.signature(fn).parameters.values())
     type_hints = get_type_hints(obj=fn, include_extras=True)
 
-    if _is_method(fn):
+    if _is_method_with_self(fn):
         # We don't need to expose the `self` parameter to the command line.
         _ = parameters.pop(0)
 
@@ -63,7 +67,7 @@ def _parse_parameters(
         name = parameter.name
         _, brief = summaries.get(name) or ("", "")
 
-        tp = type_hints.get(name)
+        tp = type_hints.get(name) or str
 
         if get_origin(tp=tp) is Annotated:
             args = get_args(tp=tp)
@@ -101,11 +105,18 @@ def _parse_parameters(
                     name=name,
                     brief=brief,
                     metavar=metavar or MetaVar(name),
-                    target_type=target_type or str,
+                    target_type=target_type,
                     default_value=default_value,
                 )
                 arguments.append(argument)
             case inspect.Parameter.VAR_POSITIONAL:
+                # Maybe this can work as a catch-all? I'm not sure how
+                # intuitive this would be or what use-cases it would have...
+                # I have to think about it some more.
+                #
+                # The alternative I think is to have a MutableSequence
+                # (e.g., list) type that let's you capture a range of values?
+                # This way you have more control over what you're capturing...
                 raise NotImplementedError("not implemented yet")
             case inspect.Parameter.KEYWORD_ONLY:
                 short: Short | None = None
@@ -133,7 +144,7 @@ def _parse_parameters(
                     parameter_name=name,
                     name=kebab_case(rename or name),
                     brief=brief,
-                    target_type=target_type or bool,
+                    target_type=target_type,
                     default_value=default_value,
                     short=short,
                     metavar=metavar,
@@ -147,11 +158,12 @@ def _parse_parameters(
     return (arguments, options)
 
 
-class Subcommand[T](
+class Subcommand(
     Argument,
     SupportsOptions,
     SupportsPositionalArguments,
     SupportsHelpMessage,
+    Generic[T],
 ):
     """Represents a command-line argument that performs a task.
 

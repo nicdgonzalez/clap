@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import enum
 import operator
-from typing import NamedTuple
+from typing import NamedTuple, NewType
 
 from .errors import ArgumentError
 
@@ -27,8 +29,7 @@ class RawOption(NamedTuple):
         return NotImplemented if result is NotImplemented else not result
 
 
-class RawArgument(str):
-    pass
+RawArgument = NewType("RawArgument", str)
 
 
 class TokenKind(enum.IntEnum):
@@ -39,7 +40,7 @@ class TokenKind(enum.IntEnum):
     STDIN = enum.auto()
 
     @classmethod
-    def from_string(cls, value: str, /) -> "TokenKind":
+    def from_string(cls, value: str, /) -> TokenKind:
         if value.startswith("--"):
             return cls.ESCAPE if value == "--" else cls.LONG
         elif value.startswith("-"):
@@ -82,9 +83,13 @@ class Token:
             and not self.is_negative_number()
         )
 
+    def is_long_option(self) -> bool:
+        return self.is_option() and self.literal[1] == "-"
+
+    def is_short_option(self) -> bool:
+        return self.is_option() and not self.is_long_option()
+
     def is_argument(self) -> bool:
-        # All tokens are technically arguments; this is just a convenience
-        # method so you don't have to import `TokenKind` to make this check.
         return self.kind == TokenKind.ARGUMENT
 
     def as_long_option(self) -> RawOption:

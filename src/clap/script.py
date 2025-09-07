@@ -1,7 +1,15 @@
 import inspect
 import os
 import sys
-from typing import Any, Callable, MutableMapping, MutableSequence, Sequence
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+    TypeVar,
+)
 
 from .abc import (
     Argument,
@@ -18,10 +26,16 @@ from .subcommand import _parse_parameters
 
 __all__ = ("Script",)
 
+T = TypeVar("T")
+
 
 # TODO: Documentation.
-class Script[T](
-    Argument, SupportsOptions, SupportsPositionalArguments, SupportsHelpMessage
+class Script(
+    Argument,
+    SupportsOptions,
+    SupportsPositionalArguments,
+    SupportsHelpMessage,
+    Generic[T],
 ):
     def __init__(
         self,
@@ -98,19 +112,14 @@ class Script[T](
         return self._positional_arguments
 
     def __call__(self, *args: object, **kwargs: object) -> T:
-        # I don't think it makes sense for the main function to be a method...
-        #
-        # if hasattr(self.callback, "__self__"):
-        #     return self.callback(self.callback.__self__, *args, **kwargs)
-        # else:
-        #     return self.callback(*args, **kwargs)
+        # NOTE: The main function must be a free function.
         return self.callback(*args, **kwargs)
 
     def get_help_message(self) -> HelpMessage:
         help_message = SupportsHelpMessage.get_help_message(self)
         return help_message.add(Text(self.after_help))
 
-    def run(
+    def parse_args(
         self,
         input: Sequence[str] = sys.argv[slice(1, None, 1)],
         *,

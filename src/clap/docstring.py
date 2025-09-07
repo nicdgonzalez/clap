@@ -149,7 +149,13 @@ def parse_doc(doc: str | None, /) -> Docstring:
 
 
 def is_section_with_heading(section: str, /) -> bool:
-    return section.split("\n", maxsplit=1)[1].strip().startswith("---")
+    sections = section.split("\n", maxsplit=1)
+
+    if len(sections) < 2:
+        # It definitely has no heading if it is only a single line.
+        return False
+
+    return sections[1].strip().startswith("---")
 
 
 def handle_parameters(content: str, /) -> dict[str, tuple[str, str]]:

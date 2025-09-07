@@ -1,9 +1,11 @@
 import types
 import typing
-from typing import Any, Callable, get_args, get_origin
+from typing import Any, Callable, TypeVar, get_args, get_origin
 
 from .errors import ArgumentError
 from .sentinel import MISSING
+
+T = TypeVar("T")
 
 
 def is_generic_type(tp: Callable[[str], Any], /) -> bool:
@@ -12,7 +14,7 @@ def is_generic_type(tp: Callable[[str], Any], /) -> bool:
     ) or isinstance(tp, type(list[int]))
 
 
-def convert[T](
+def convert(
     *,
     argument: str,
     converter: Callable[[str], T],

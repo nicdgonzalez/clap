@@ -65,12 +65,14 @@ from .decorators import group, script, subcommand
 from .errors import UserError
 from .extension import Extension
 from .help import HelpFormatter
+from .option import Option
 
 __all__ = (
     "Application",
     "Extension",
     "HelpFormatter",
     "MetaVar",
+    "Option",
     "Rename",
     "Short",
     "UserError",

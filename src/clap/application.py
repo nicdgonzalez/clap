@@ -2,7 +2,15 @@ import importlib
 import os
 import sys
 import textwrap
-from typing import Any, Callable, MutableMapping, Sequence
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    MutableMapping,
+    ParamSpec,
+    Sequence,
+    TypeVar,
+)
 
 from .abc import (
     Argument,
@@ -18,9 +26,16 @@ from .option import DEFAULT_HELP, Option
 from .parser import parse
 from .subcommand import Subcommand
 
+T = TypeVar("T")
+P = ParamSpec("P")
+
 
 class Application(
-    Argument, SupportsOptions, SupportsSubcommands, SupportsHelpMessage
+    Argument,
+    SupportsOptions,
+    SupportsSubcommands,
+    SupportsHelpMessage,
+    Generic[T],
 ):
     """Represents the project itself.
 
@@ -91,19 +106,39 @@ class Application(
         print(help_message.render(HelpFormatter()))
 
     def extend(self, name: str, package: str | None = None) -> None:
+        """Load subcommands from an [`Extension`][clap.extension.Extension]
+        onto the main application.
+
+        Parameters
+        ----------
+        name
+            The name of the module to import in dot format (the same format
+            used when importing modules; e.g., `clap.errors`)
+        package
+            Required when using relative module names (e.g., `clap.errors` can
+            also be imported as `name=".errors"` and `package="clap"`).
+
+        Raises
+        ------
+        ImportError
+            The target module was not found.
+        clap.errors.MissingSetupFunctionError
+            The target module exists, but the global `setup` function was
+            not defined. See documentation for more information.
+        """
         module = importlib.import_module(name, package=package)
         setup_fn = getattr(module, "setup", None)
 
         if setup_fn is None:
             raise MissingSetupFunctionError(module=module)
 
-        _ = setup_fn(app=self)
+        _ = setup_fn(self)
 
     def add_extension(self, extension: Extension, /) -> None:
         for subcommand in extension.subcommands:
             self.add_subcommand(subcommand)
 
-    def subcommand[T, **P](
+    def subcommand(
         self,
         *args: Any,
         **kwargs: Any,
@@ -131,7 +166,7 @@ class Application(
 
         return wrapper
 
-    def group[T, **P](
+    def group(
         self,
         *args: Any,
         **kwargs: Any,
@@ -163,7 +198,7 @@ class Application(
         help_message = SupportsHelpMessage.get_help_message(self)
         return help_message.add(Text(self.after_help))
 
-    def run(
+    def parse_args(
         self,
         input: Sequence[str] = sys.argv[slice(1, None, 1)],
         *,

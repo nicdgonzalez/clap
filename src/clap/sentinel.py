@@ -19,4 +19,6 @@ class _Missing:
         return "..."
 
 
+# Since `None` can be a valid value in certain contexts, we can use `MISSING`
+# to explicitly indicate the absence of a value.
 MISSING: Any = _Missing()

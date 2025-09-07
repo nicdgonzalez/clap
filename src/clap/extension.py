@@ -17,6 +17,11 @@ def add_member_subcommands(parent: SupportsSubcommands, /) -> None:
         if not isinstance(subcommand, (Group, Subcommand)):
             continue
 
+        if subcommand.parent is not None:
+            # The subcommand belongs to a group already.
+            # XXX: There is probably a better way to handle this...
+            continue
+
         subcommand.parent = parent
 
         # Decorators on class methods wrap around an unbound method;
@@ -39,3 +44,9 @@ class Extension(SupportsSubcommands):
 
     def __init__(self, app: Application, /, *args: Any, **kwargs: Any) -> None:
         self.app = app
+
+    @property
+    def all_subcommands(
+        self,
+    ) -> MutableMapping[str, Group[Any] | Subcommand[Any]]:
+        return self._subcommands

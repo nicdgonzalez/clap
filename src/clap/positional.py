@@ -1,13 +1,15 @@
 import pathlib
-from typing import Callable
+from typing import Callable, TypeVar
 
 from .abc import SupportsConvert
 from .attributes import MetaVar
 from .sentinel import MISSING
 
+T = TypeVar("T")
+
 
 # TODO: Documentation.
-class PositionalArgument[T](SupportsConvert[T]):
+class PositionalArgument(SupportsConvert[T]):
     """Represents a positional-only command-line argument"""
 
     def __init__(

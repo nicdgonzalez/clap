@@ -8,6 +8,7 @@ from typing import (
     MutableSequence,
     Protocol,
     Sequence,
+    TypeVar,
     runtime_checkable,
 )
 
@@ -23,6 +24,8 @@ if TYPE_CHECKING:
     from .option import Option
     from .positional import PositionalArgument
     from .subcommand import Subcommand
+
+T = TypeVar("T")
 
 
 @runtime_checkable
@@ -160,9 +163,11 @@ class SupportsSubcommands(Protocol):
             A subcommand named `name` does not exist.
         """
         if (command := self.all_subcommands.pop(name)) is None:
+            # There is no subcommand named with the requested name.
             return None
 
         if len(command.aliases) < 1:
+            # This is the main subcommand since there are no aliases.
             return command
 
         if name in command.aliases:
@@ -295,7 +300,7 @@ class SupportsPositionalArguments(Protocol):
 
     def remove_positional_argument(
         self,
-        name: str,
+        name_or_index: str | int,
         /,
     ) -> PositionalArgument[Any] | None:
         """Unregister a positional argument.
@@ -312,23 +317,25 @@ class SupportsPositionalArguments(Protocol):
         None
             No positional argument matched the given `name`.
         """
-        match name:
+        match name_or_index:
             case int():
-                return self.positional_arguments.pop(name)
+                return self.positional_arguments.pop(name_or_index)
             case str():
                 for index, argument in enumerate(self.positional_arguments):
-                    if name != argument.name:
+                    if name_or_index != argument.name:
                         continue
 
                     return self.positional_arguments.pop(index)
             case _:
-                raise TypeError(f"expected str or int, not {type(name)}")
+                raise TypeError(
+                    f"expected str or int, not {type(name_or_index)}"
+                )
 
         return None
 
 
 @runtime_checkable
-class SupportsConvert[T](Protocol):
+class SupportsConvert(Protocol[T]):
     @property
     def target_type(self) -> Callable[[str], T]:
         """The type to convert to."""
@@ -379,7 +386,7 @@ class SupportsHelpMessage(Protocol):
     def usage(self) -> Usage:
         """The message to display for the usage section of the help message."""
         names = self.qualified_name.split(" ")
-        assert len(names) > 0, "expected `self.name` in `self.qualified_name`"
+        assert len(names) > 0, "expected at least `name` in `qualified_name`"
         program_name = names.pop(0)
         usage = Usage(program_name)
 
@@ -388,13 +395,27 @@ class SupportsHelpMessage(Protocol):
             names.append(subcommand)
             usage.add_argument(Arg(name=" ".join(names), required=None))
 
-        # Anything implementing `SupportsHelpMessage` should also implement
-        # `SupportsOptions` since `--help` is how you display the help message.
-        assert isinstance(self, SupportsOptions)
-        for option in self.options:
-            if option.default_value is MISSING:
-                usage.add_argument(Arg(name=f"--{option.name}", required=None))
-                usage.add_argument(Arg(name=option.metavar, required=True))
+        if isinstance(self, SupportsOptions):
+            # required_options = filter(
+            #     lambda opt: opt.default_value is MISSING,
+            #     self.options,
+            # )
+
+            for option in self.options:
+                if option.short is not None:
+                    name = f"-{option.short}"
+                else:
+                    name = f"--{option.name}"
+
+                if option.target_type is not bool:
+                    name += f" {option.metavar}"
+
+                usage.add_argument(
+                    Arg(
+                        name=name,
+                        required=option.default_value is MISSING,
+                    )
+                )
 
         if isinstance(self, SupportsSubcommands):
             usage.add_argument(Arg(name="subcommand", required=True))
@@ -414,14 +435,8 @@ class SupportsHelpMessage(Protocol):
         return usage
 
     def get_help_message(self) -> HelpMessage:
-        """Get the help message to display to the user.
-
-        Parameters
-        ----------
-        fmt
-            Customize how the help message is created.
-        """
-        subcommands = Section("Subcommands")
+        """Get the help message to display to the user."""
+        subcommands = Section("Subcommands", skip_if_empty=True)
 
         if isinstance(self, SupportsSubcommands):
             for subcommand in self.subcommands:
@@ -429,7 +444,7 @@ class SupportsHelpMessage(Protocol):
                     Item(name=subcommand.name, brief=subcommand.brief)
                 )
 
-        arguments = Section("Arguments")
+        arguments = Section("Arguments", skip_if_empty=True)
 
         if isinstance(self, SupportsPositionalArguments):
             for argument in self.positional_arguments:
@@ -437,23 +452,20 @@ class SupportsHelpMessage(Protocol):
                     Item(name=argument.metavar, brief=argument.brief)
                 )
 
-        options = Section("Options")
-        # Anything implementing `SupportsHelpMessage` should also implement
-        # `SupportsOptions` since `--help` is how you display the help message.
-        assert isinstance(self, SupportsOptions)
-        assert len(self.options) > 0, "expected at least the default help"
+        options = Section("Options", skip_if_empty=True)
 
-        for option in self.options:
-            name = f"--{option.name}"
+        if isinstance(self, SupportsOptions):
+            for option in self.options:
+                name = f"--{option.name}"
 
-            if option.short is not None:
-                name = f"-{option.short}, {name}"
-            else:
-                # Add whitespaces where the short option would be so all
-                # long options are aligned.
-                name = f"    {name}"
+                if option.short is not None:
+                    name = f"-{option.short}, {name}"
+                else:
+                    # Add whitespaces where the short option would be so all
+                    # long options are aligned.
+                    name = f"    {name}"
 
-            options.add_item(Item(name=name, brief=option.brief))
+                options.add_item(Item(name=name, brief=option.brief))
 
         assert isinstance(self, Argument)
         return (

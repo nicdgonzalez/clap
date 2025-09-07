@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Iterator, Sequence
 
 from .token import Token, TokenKind
@@ -17,7 +19,7 @@ class Lexer:
         """Represents the command-line arguments passed to the program"""
         return self._input
 
-    def __iter__(self) -> Iterator[Token]:
+    def __iter__(self) -> LexerIterator:
         return LexerIterator(self)
 
 
