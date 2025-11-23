@@ -1,13 +1,3 @@
-import enum
-
-
-class Action(enum.IntEnum):
-    """Indicates how to interpret the command-line arguments."""
-
-    STORE = enum.auto()
-    COUNT = enum.auto()
-
-
 class Metadata:
     __slots__ = ()
 
@@ -47,23 +37,18 @@ class Short(Metadata):
 
     __slots__ = ("value",)
 
-    def __init__(self, value: str | None = None) -> None:
+    def __init__(self, value: str) -> None:
         if value is not None and len(value) != 1:
             raise ValueError("value must be a single character")
 
         self.value = value
 
 
-class Help(Metadata):
-    """A brief message about the argument.
+class Help(Metadata, str):
+    """A brief explanation of the argument."""
 
-    Parameters
-    ----------
-    value
-        One-line explanation of the argument
-    """
+    __slots__ = ()
 
-    __slots__ = ("value",)
 
-    def __init__(self, value: str) -> None:
-        self.value = value
+class Flatten(Metadata):
+    pass

@@ -5,7 +5,7 @@ from clap.parser import Lexer, Parser, Token, TokenKind
 
 def test_lexer() -> None:
     lexer = Lexer(
-        args=[
+        argv=[
             "--verbose",
             "-q",
             "--input=./input.css",

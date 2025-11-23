@@ -6,22 +6,26 @@ it is the end goal.
 """
 
 import dataclasses
-import enum
 import os
 import pathlib
 import sys
 from typing import Annotated
 
 import clap
-from clap.prelude import *
+from clap import Command, Count, Global, Help, Long, Nargs, Rename, Short
 
 
 @dataclasses.dataclass
-class Format(clap.Args):
+class Format(Command):
     # Positional-only arguments
     sources: Annotated[pathlib.Path, Nargs(1, ...)]
 
+    def __call__(self) -> None:
+        print(self.sources)
 
+
+# TODO: Representing subcommands in a way that keeps the type-checker happy
+# does not work with this design. We're going to have to get creative here.
 class Subcommand(clap.Subcommand):
     # new: New
     # init: Init
@@ -47,15 +51,17 @@ class Parser(
 ):
     verbose: Annotated[
         int,
-        Action.COUNT,
+        Count,  # NOTE: I don't like this style for actions.
         Long,
         Short,
+        # NOTE: This type of information currently gets lost during
+        # the parsing process. I need to add this data to the types.
         Global(True),  # Can also be matched on any subcommand.
         Help("Use verbose output (or `-vv` for more verbose output)"),
     ] = 0
     quiet: Annotated[
         int,
-        Action.COUNT,
+        Count,
         Long,
         Short,
         Global(True),
@@ -75,4 +81,4 @@ def main() -> None:
     args: Parser = Parser.parse()  # `sys.exit(2)` on failure.
     # args = MyParser.try_parse()  # `raise ArgumentError(...)` on failure.
 
-    result = handle_subcommand(args.subcommand)
+    result = args.subcommand.run()
